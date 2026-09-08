@@ -24,6 +24,7 @@ class Settings:
     source_header: str = (
         "your_source_header_here"  # Replace with your own source header.
     )
+    user_id: str = "user_12345"
 
     @classmethod
     def from_env(self) -> "Settings":
@@ -33,6 +34,8 @@ class Settings:
             ),
             webhook_id=self.webhook_id,
             webhook_endpoint_url=self.webhook_endpoint_url,
+            source_header=self.source_header,
+            user_id=self.user_id,
         )
 
 
