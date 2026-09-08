@@ -19,9 +19,11 @@ from dataclasses import dataclass
 @dataclass
 class Settings:
     llm_model: str = ""
-    # Replace with your own webhook ID.
-    webhook_id: str = "Your webhook ID goes here"
+    webhook_id: str = "Your webhook ID goes here"  # Replace with your own webhook ID.
     webhook_endpoint_url: str = f"https://developer.orkescloud.com/webhook/{webhook_id}"
+    source_header: str = (
+        "your_source_header_here"  # Replace with your own source header.
+    )
 
     @classmethod
     def from_env(self) -> "Settings":

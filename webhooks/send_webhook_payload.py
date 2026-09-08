@@ -10,7 +10,7 @@ def main():
     """
     headers = {
         "Accept": "application/json",
-        "source": "your_source_header_here",  # Replace with your own source header.
+        "source": settings.source_header,
     }
 
     payload = {
