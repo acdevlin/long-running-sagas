@@ -104,10 +104,11 @@ def main():
         )
 
         # The webhook payload will be passed to the LLM task for processing.
+        llm_provider, model = settings.llm_model.split("/", 1)
         agent_task = LlmChatComplete(
             task_ref_name="process_webhook_ref",
-            llm_provider="OpenAi_Key",  # Your Orkes integration name
-            model="gpt-5-nano",  # A model enabled for that integration
+            llm_provider=settings.integration_name,
+            model=model,
             messages=[
                 ChatMessage(
                     role="system",

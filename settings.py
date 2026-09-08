@@ -18,7 +18,10 @@ from dataclasses import dataclass
 
 @dataclass
 class Settings:
-    llm_model: str = ""
+    llm_model: str = "openai/gpt-5-nano"
+    integration_name: str = (
+        "your_integration_name_here"  # Replace with the name of your preferred Orkes integration.
+    )
     webhook_id: str = "your_webhook_id_here"  # Replace with your own webhook ID.
     webhook_endpoint_url: str = f"https://developer.orkescloud.com/webhook/{webhook_id}"
     source_header: str = (
@@ -29,8 +32,9 @@ class Settings:
     @classmethod
     def from_env(self) -> "Settings":
         return self(
-            llm_model=(
-                os.environ.get("CONDUCTOR_AGENT_LLM_MODEL") or "openai/gpt-5-nano"
+            llm_model=(os.environ.get("CONDUCTOR_AGENT_LLM_MODEL") or self.llm_model),
+            integration_name=(
+                os.environ.get("CONDUCTOR_INTEGRATION_NAME") or self.integration_name
             ),
             webhook_id=self.webhook_id,
             webhook_endpoint_url=self.webhook_endpoint_url,
