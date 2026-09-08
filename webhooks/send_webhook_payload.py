@@ -10,14 +10,14 @@ def main():
     """
     headers = {
         "Accept": "application/json",
-        "source": "alex-local-test",
+        "source": "your_source_header_here",  # Replace with your own source header.
     }
 
     payload = {
         "id": "user_a",
         "type": "customer",
         "agent_input": (
-            "Say hello and inform the user that their email has been sent."
+            "Introduce yourself, then inform the user that their email has been sent."
         ),
     }
 
@@ -31,10 +31,10 @@ def main():
     print(f"Status: {response.status_code}")
     print(f"Response: {response.text}")
 
-    # Raise an exception for HTTP errors such as 401 or 500.
+    # Raise an exception for HTTP error responses (e.g.:4xx and 5xx).
     response.raise_for_status()
 
-    print("Webhook was accepted by Orkes.")
+    print("Webhook was accepted by Orkes Conductor.")
 
 
 if __name__ == "__main__":
