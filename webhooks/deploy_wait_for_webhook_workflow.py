@@ -11,7 +11,7 @@ curl -i -X POST \
   -H 'Accept: application/json' \
   -H 'source: {your_source_header_here}' \
   'https://developer.orkescloud.com/webhook/{your_webhook_id_here}' \
-  -d '{"id":"user_a","type":"customer","agent_input":"Say hello!"}'
+  -d '{"id":"{your_user_id_here}","type":"customer","agent_input":"Say hello!"}'
 
 """
 
@@ -45,7 +45,11 @@ def get_user_email(userid: str) -> str:
 
 @worker_task(task_definition_name="send_email")
 def send_email(email: str, subject: str, body: str):
-    print(f"sending email to {email} with subject {subject} and body {body}")
+    print(
+        f"sending email to: {email}\n",
+        f"with subject: {subject}\n",
+        f"and body: {body}\n",
+    )
 
 
 def main():
@@ -133,7 +137,7 @@ def main():
         workflow.register(overwrite=True)
         print(f"Registered workflow {WORKFLOW_NAME}, version {WORKFLOW_VERSION}")
 
-        request = StartWorkflowRequest(input={"userid": "user_a"})
+        request = StartWorkflowRequest(input={"userid": f"{settings.user_id}"})
         request.name = WORKFLOW_NAME
         request.version = WORKFLOW_VERSION
 
