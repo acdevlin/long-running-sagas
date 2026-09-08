@@ -30,7 +30,7 @@ from conductor.client.workflow.task.llm_tasks.llm_chat_complete import (
     LlmChatComplete,
 )
 
-from webhooks.settings import settings
+from settings import settings
 
 WORKFLOW_NAME = "wait_for_webhook_demo"
 WORKFLOW_VERSION = 1
