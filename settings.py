@@ -20,17 +20,17 @@ from dataclasses import dataclass
 class Settings:
     llm_model: str = ""
     # Replace with your own webhook ID.
-    webhook_id: str = "r8ai5a8a9d05-a8c0-11f1-b02f-6295aa77ab9a"
+    webhook_id: str = "Your webhook ID goes here"
     webhook_endpoint_url: str = f"https://developer.orkescloud.com/webhook/{webhook_id}"
 
     @classmethod
-    def from_env(cls) -> "Settings":
-        return cls(
+    def from_env(self) -> "Settings":
+        return self(
             llm_model=(
                 os.environ.get("CONDUCTOR_AGENT_LLM_MODEL") or "openai/gpt-5-nano"
             ),
-            webhook_id=cls.webhook_id,
-            webhook_endpoint_url=cls.webhook_endpoint_url,
+            webhook_id=self.webhook_id,
+            webhook_endpoint_url=self.webhook_endpoint_url,
         )
 
 

@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-Example of a durable runtime that deploys a workflow with a WAIT_FOR_WEBHOOK task.
+Deploys a workflow with a WAIT_FOR_WEBHOOK task as part of a durable runtime.
 
-Once deployed, this script will exit. The workflow will continue waiting for the webhook to be
+After deployment, this script will exit. The workflow will continue waiting for the webhook to be
 received from within the Orkes Cloud UI.
 
 Expects a payload request similar to the following:
 curl -i -X POST \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json' \
-  -H 'source: alex-local-test' \
-  'https://developer.orkescloud.com/webhook/r8ai5a8a9d05-a8c0-11f1-b02f-6295aa77ab9a' \
-  -d '{"id":"user_a","type":"customer","agent_input":"Say hello and inform the user that their email has been sent."}'
+  -H 'source: {your_source_header_here}' \
+  'https://developer.orkescloud.com/webhook/{your_webhook_id_here}' \
+  -d '{"id":"user_a","type":"customer","agent_input":"Say hello!"}'
 
 """
 
