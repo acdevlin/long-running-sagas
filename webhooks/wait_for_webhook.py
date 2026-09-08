@@ -30,11 +30,12 @@ from conductor.client.workflow.task.llm_tasks.llm_chat_complete import (
     LlmChatComplete,
 )
 
-from settings import settings
+from webhooks.settings import settings
 
 WORKFLOW_NAME = "wait_for_webhook_demo"
 WORKFLOW_VERSION = 1
 WAIT_TASK_REF = "wait_for_webhook_ref"
+TIMEOUT_SECONDS = 60
 
 
 @worker_task(task_definition_name="get_user_email")
@@ -145,9 +146,9 @@ def main():
             f"{api_config.ui_host.rstrip('/')}/execution/{workflow_id}"
         )
 
-        # Keep local workers alive until their tasks finish (60 seconds max) and the
-        # server-side WAIT_FOR_WEBHOOK task becomes active.
-        deadline = time.monotonic() + 60
+        # Keep local workers alive until the server-side WAIT_FOR_WEBHOOK task becomes active,
+        # using a timeout to avoid waiting forever in case something does goes wrong.
+        deadline = time.monotonic() + TIMEOUT_SECONDS
 
         while time.monotonic() < deadline:
             execution = workflow_client.get_workflow(
@@ -173,6 +174,7 @@ def main():
                 )
                 return
 
+            # Error handling.
             if execution.status in {"FAILED", "TIMED_OUT", "TERMINATED"}:
                 task_states = [
                     {
@@ -185,10 +187,12 @@ def main():
                 raise RuntimeError(
                     f"Workflow entered {execution.status}: {task_states}"
                 )
-
+            # Poll status every second.
             time.sleep(1)
 
-        raise TimeoutError(f"Workflow did not reach {WAIT_TASK_REF} within 60 seconds")
+        raise TimeoutError(
+            f"Workflow did not reach {WAIT_TASK_REF} within {TIMEOUT_SECONDS} seconds"
+        )
 
     finally:
         task_handler.stop_processes()

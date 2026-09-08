@@ -19,6 +19,7 @@ from dataclasses import dataclass
 @dataclass
 class Settings:
     llm_model: str = ""
+    # Replace with your own webhook ID.
     webhook_id: str = "r8ai5a8a9d05-a8c0-11f1-b02f-6295aa77ab9a"
     webhook_endpoint_url: str = f"https://developer.orkescloud.com/webhook/{webhook_id}"
 
