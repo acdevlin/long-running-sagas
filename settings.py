@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 @dataclass
 class Settings:
-    llm_model: str = "openai/gpt-5-nano"
+    llm_model: str = "openai/gpt-5-nano"  # Replace with your preferred LLM model.
     integration_name: str = (
         "your_integration_name_here"  # Replace with the name of your preferred Orkes integration.
     )
