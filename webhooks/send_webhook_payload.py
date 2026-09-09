@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Send a webhook payload to the specified Orkes webhook endpoint."""
 
 import requests
 from settings import settings
