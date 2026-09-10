@@ -13,15 +13,14 @@ from conductor.client.configuration.configuration import Configuration
 from conductor.client.http.models import StartWorkflowRequest
 from conductor.client.orkes_clients import OrkesClients
 from conductor.client.workflow.conductor_workflow import ConductorWorkflow
-from conductor.client.workflow.task.llm_tasks.llm_chat_complete import (
-    ChatMessage,
-    LlmChatComplete,
-)
 from conductor.client.workflow.task.timeout_policy import TimeoutPolicy
 from conductor.client.workflow.task.wait_for_webhook_task import wait_for_webhook
+from conductor.ai.agents import AgentRuntime
 
 from settings import settings
 
+from .agent_task import AgentTask
+from .webhook_agent import webhook_agent
 from .workers import get_user_email, send_email
 
 WORKFLOW_NAME = "wait_for_webhook_demo"
@@ -64,30 +63,14 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
         },
     )
 
-    _, model = settings.llm_model.split("/", 1)
-    agent_task = LlmChatComplete(
+    agent_task = AgentTask(
         task_ref_name="process_webhook_ref",
-        llm_provider=settings.integration_name,
-        model=model,
-        messages=[
-            ChatMessage(
-                role="system",
-                message=(
-                    "You are a customer-service agent. "
-                    "Process the user's request concisely, professionally, "
-                    "and safely."
-                ),
-            ),
-            ChatMessage(
-                role="user",
-                message=webhook_wait.output("agent_input"),
-            ),
-        ],
-        temperature=0.2,
+        agent_name=webhook_agent.name,
+        prompt=webhook_wait.output("agent_input"),
     )
 
     workflow >> get_email_task >> send_email_task >> webhook_wait >> agent_task
-    workflow.output_parameter("agent_response", agent_task.output("result"))
+    workflow.output_parameter("agent_response", agent_task.output("text"))
 
     return workflow
 
@@ -147,6 +130,9 @@ def main() -> None:
 
     try:
         clients = OrkesClients(configuration=config)
+        # Deploy agent definition
+        with AgentRuntime(configuration=config) as runtime:
+            runtime.deploy(webhook_agent)
         workflow = build_workflow(clients.get_workflow_executor())
         workflow.register(overwrite=True)
         print(f"Registered workflow {WORKFLOW_NAME}, version {WORKFLOW_VERSION}")
