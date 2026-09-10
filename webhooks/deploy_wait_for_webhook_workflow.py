@@ -106,6 +106,8 @@ def wait_until_webhook_ready(workflow_client, workflow_id: str) -> None:
         if wait_task and wait_task.status == "IN_PROGRESS":
             print(f"{WAIT_TASK_REF} is ready")
             print(f"Webhook URL: {settings.webhook_endpoint_url}")
+            # Exercise 1: Return the workflow output to simplify retrieval of the "send_email_ref"
+            # task output, which in turn allows the email to be stored in the local database.
             return
 
         if execution.status in {"FAILED", "TIMED_OUT", "TERMINATED"}:

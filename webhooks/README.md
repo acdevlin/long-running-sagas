@@ -54,4 +54,12 @@ There are a wide variety of databases that you can use in projects, but for the 
 
 To achieve this, update `utils/workers.py` so that the `send_email` worker task returns relevant information about each sent email, then in `deploy_wait_for_webhook_workflow.py` store this data in `utils/webhook_codelab_storage.db`
 
-(TBD)
+You can check that your code is writing data to the database correctly by using the provided `utils/query_sqlite_db.py` helper file.
+
+## Exercise 2: "Fan Out" by Scaling Email Inputs
+
+(TODO)
+
+## Exercise 3: Multi-Turn Agentic Processing
+
+(TODO)
