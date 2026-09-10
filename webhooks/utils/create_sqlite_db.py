@@ -14,8 +14,8 @@ def main():
     c = conn.cursor()
     c.execute("""
         CREATE TABLE emails (
-            id INT PRIMARY KEY NOT NULL,
-            sent_time INT NOT NULL,
+            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            sent_time INTEGER NOT NULL,
             subject TEXT NOT NULL,
             recipients TEXT NOT NULL
         )
