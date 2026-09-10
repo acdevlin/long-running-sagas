@@ -44,14 +44,14 @@ You are now ready to proceed with the exercises!
 
 </details>
 
-## Exercise 1
+## Exercise 1: Increase Durability with Persistent Local Storage
 
-(TBD)
+Your goal for this exercise is to store task output in a local database.
 
-## Exercise 2
+As noted in Viren's linked blog post, one of the big perks to this late-bound saga architectural approach is we can write data from our tasks before the `WAIT_FOR_WEBHOOK` to disk so we are no longer bound by our agentic runtime. We can take this concept even further by storing data in a SQL database for guaranteed ACID compliance and data integrity during the "suspended" portion of our saga.
 
-(TBD)
+There are a wide variety of databases that you can use in projects, but for the sake of simplicity in this codelab we're going to use a local [sqlite3 database](https://docs.python.org/3/library/sqlite3.html) since this comes built-in with python3. To create a new database called "webhook_codelab_storage" run `python3 utils/create_sqlite_db.py` which creates a new - also be sure to inspect this file to understand the schema of the "emails" table.
 
-## Exercise 3
+To achieve this, update `utils/workers.py` so that the `send_email` worker task returns relevant information about each sent email, then in `deploy_wait_for_webhook_workflow.py` store this data in `utils/webhook_codelab_storage.db`
 
 (TBD)

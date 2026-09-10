@@ -50,7 +50,7 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
 
     send_email_task = send_email(
         task_ref_name="send_email_ref",
-        email=get_email_task.output("result"),
+        recipients=get_email_task.output("result"),
         subject="Hello from Orkes",
         body="Test Email",
     )
@@ -144,6 +144,7 @@ def main() -> None:
         print(f"Workflow URL: {workflow_url}")
 
         wait_until_webhook_ready(workflow_client, workflow_id)
+        # Exercise 1: Retrieve output from "send_email_ref" task and store it in the local database.
     finally:
         task_handler.stop_processes()
 
