@@ -15,14 +15,16 @@ from dataclasses import dataclass
 class Settings:
     llm_model: str = "openai/gpt-5-nano"  # Replace with your preferred LLM model.
     integration_name: str = (
-        "your_integration_name_here"  # Replace with the name of your preferred Orkes integration.
+        "OpenAi_Key"  # Replace with the name of your preferred Orkes integration.
     )
-    webhook_id: str = "your_webhook_id_here"  # Replace with your own webhook ID.
+    webhook_id: str = (
+        "r8ai01be9743-ac95-11f1-9216-4224b94c0a5f"  # Replace with your own webhook ID.
+    )
     webhook_endpoint_url: str = f"https://developer.orkescloud.com/webhook/{webhook_id}"
     source_header: str = (
-        "your_source_header_here"  # Replace with your own source header.
+        "wait-for-webhook-demo-value"  # Replace with the value of your own "source" header.
     )
-    user_id: str = "user_12345"
+    user_id: str = "alex_was_here"
 
     @classmethod
     def from_env(self) -> "Settings":

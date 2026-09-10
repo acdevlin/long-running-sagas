@@ -1,5 +1,7 @@
 """Worker tasks used by the webhook workflow."""
 
+import time
+
 from conductor.client.worker.worker_task import worker_task
 
 
@@ -14,10 +16,13 @@ def send_email(
     recipients: str,
     subject: str,
     body: str,
-) -> None:
+) -> dict[str, int | str]:
     """Simulate sending an email."""
     print(
         f"Sending email\n" f"To: {recipients}\n" f"Subject: {subject}\n" f"Body: {body}"
     )
-    # Exercise 1: Return required data so the email can be stored in our local database.
-    return None
+    return {
+        "sent_time": int(time.time()),
+        "subject": subject,
+        "recipients": recipients,
+    }

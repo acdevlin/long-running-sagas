@@ -6,11 +6,14 @@ WAIT_FOR_WEBHOOK task, then exits. Conductor keeps the workflow running and
 resumes it after a callback is sent by ``send_webhook_payload.py``.
 """
 
+import sqlite3
 import time
+from pathlib import Path
+from typing import Any
 
 from conductor.client.automator.task_handler import TaskHandler
 from conductor.client.configuration.configuration import Configuration
-from conductor.client.http.models import StartWorkflowRequest
+from conductor.client.http.models import StartWorkflowRequest, Workflow
 from conductor.client.orkes_clients import OrkesClients
 from conductor.client.workflow.conductor_workflow import ConductorWorkflow
 from conductor.client.workflow.task.timeout_policy import TimeoutPolicy
@@ -25,7 +28,10 @@ from .utils.workers import get_user_email, send_email
 
 WORKFLOW_NAME = "wait_for_webhook_demo"
 WORKFLOW_VERSION = 1
+SEND_EMAIL_TASK_REF = "send_email_ref"
 WAIT_TASK_REF = "wait_for_webhook_ref"
+
+DATABASE_PATH = Path(__file__).resolve().parent / "utils" / "webhook_codelab_storage.db"
 
 WORKFLOW_TIMEOUT_SECONDS = 7 * 24 * 60 * 60
 READINESS_TIMEOUT_SECONDS = 60
@@ -49,10 +55,10 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
     )
 
     send_email_task = send_email(
-        task_ref_name="send_email_ref",
+        task_ref_name=SEND_EMAIL_TASK_REF,
         recipients=get_email_task.output("result"),
-        subject="Hello from Orkes",
-        body="Test Email",
+        subject="Hello from Alex",
+        body="foo bar qua",
     )
 
     webhook_wait = wait_for_webhook(
@@ -84,8 +90,8 @@ def start_workflow(workflow_client) -> str:
     return workflow_client.start_workflow(start_workflow_request=request)
 
 
-def wait_until_webhook_ready(workflow_client, workflow_id: str) -> None:
-    """Wait until the execution reaches its WAIT_FOR_WEBHOOK task."""
+def wait_until_webhook_ready(workflow_client, workflow_id: str) -> Workflow:
+    """Return the execution after it reaches its WAIT_FOR_WEBHOOK task."""
     deadline = time.monotonic() + READINESS_TIMEOUT_SECONDS
 
     while time.monotonic() < deadline:
@@ -106,9 +112,7 @@ def wait_until_webhook_ready(workflow_client, workflow_id: str) -> None:
         if wait_task and wait_task.status == "IN_PROGRESS":
             print(f"{WAIT_TASK_REF} is ready")
             print(f"Webhook URL: {settings.webhook_endpoint_url}")
-            # Exercise 1: Return the workflow output to simplify retrieval of the "send_email_ref"
-            # task output, which in turn allows the email to be stored in the local database.
-            return
+            return execution
 
         if execution.status in {"FAILED", "TIMED_OUT", "TERMINATED"}:
             raise RuntimeError(f"Workflow entered terminal status {execution.status}")
@@ -119,6 +123,56 @@ def wait_until_webhook_ready(workflow_client, workflow_id: str) -> None:
         f"Workflow did not reach {WAIT_TASK_REF} within "
         f"{READINESS_TIMEOUT_SECONDS} seconds"
     )
+
+
+def get_completed_email_output(
+    execution: Workflow,
+) -> dict[str, Any]:
+    """Return the completed send-email task output from an execution."""
+    email_task = next(
+        (
+            task
+            for task in execution.tasks or []
+            if task.reference_task_name == SEND_EMAIL_TASK_REF
+            and task.status == "COMPLETED"
+        ),
+        None,
+    )
+    if email_task is None or not isinstance(email_task.output_data, dict):
+        raise RuntimeError(f"No valid completed output found for {SEND_EMAIL_TASK_REF}")
+
+    return email_task.output_data
+
+
+def store_email_output(email_output: dict[str, Any]) -> int:
+    """Insert a completed email task's output into the local SQLite database."""
+    if not DATABASE_PATH.is_file():
+        raise FileNotFoundError(
+            f"Database not found at {DATABASE_PATH}. "
+            "Run webhooks/utils/create_sqlite_db.py first."
+        )
+
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO emails (
+                sent_time,
+                subject,
+                recipients
+            )
+            VALUES (?, ?, ?)
+            """,
+            (
+                email_output["sent_time"],
+                email_output["subject"],
+                email_output["recipients"],
+            ),
+        )
+
+    if cursor.lastrowid is None:
+        raise RuntimeError("SQLite did not return an ID for the stored email")
+
+    return cursor.lastrowid
 
 
 def main() -> None:
@@ -145,8 +199,10 @@ def main() -> None:
         workflow_url = f"{config.ui_host.rstrip('/')}/execution/{workflow_id}"
         print(f"Workflow URL: {workflow_url}")
 
-        wait_until_webhook_ready(workflow_client, workflow_id)
-        # Exercise 1: Retrieve output from "send_email_ref" task and store it in the local database.
+        execution = wait_until_webhook_ready(workflow_client, workflow_id)
+        email_output = get_completed_email_output(execution)
+        email_id = store_email_output(email_output)
+        print(f"Stored email {email_id} in {DATABASE_PATH}")
     finally:
         task_handler.stop_processes()
 
