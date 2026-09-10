@@ -19,9 +19,9 @@ from conductor.ai.agents import AgentRuntime
 
 from settings import settings
 
-from .agent_task import AgentTask
-from .webhook_agent import webhook_agent
-from .workers import get_user_email, send_email
+from .lib.agent_task import AgentTask
+from .lib.webhook_agent import webhook_agent
+from .lib.workers import get_user_email, send_email
 
 WORKFLOW_NAME = "wait_for_webhook_demo"
 WORKFLOW_VERSION = 1
