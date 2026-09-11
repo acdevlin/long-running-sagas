@@ -5,6 +5,8 @@ resume an in-progress workflow after suspending its execution for up to 7 days.
 It is an implementation of the concepts mentioned
 [in this blog post from our CTO, Viren Baraiya](https://orkes.io/blog/late-bound-sagas-why-your-agent-is-not-an-llm-in-a-loop#what-it-looks-like-in-motion).
 
+If you ever need additional guidance on an exercise, check out the "solutions" branch of this repository.
+
 ## Preparation
 
 You will need to update the contents of `../settings.py` then confirm both
