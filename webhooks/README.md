@@ -5,6 +5,8 @@ resume an in-progress workflow after suspending its execution for up to 7 days.
 It is an implementation of the concepts mentioned
 [in this blog post from our CTO, Viren Baraiya](https://orkes.io/blog/late-bound-sagas-why-your-agent-is-not-an-llm-in-a-loop#what-it-looks-like-in-motion).
 
+See the top-level README file in the parent directory for instructions on how to get started.
+
 If you ever need additional guidance on an exercise, check out the "solutions" branch of this repository.
 
 ## Preparation
@@ -154,4 +156,8 @@ completed email task.
 
 ## Exercise 3: Multi-Turn Agentic Processing
 
-(TODO)
+(WIP)
+
+We have now scaled up the email inputs to our persistent pipeline. However, you
+have probably noticed that the downstream processing for our agent isn't doing
+anything meaningful with the email data at this time;
