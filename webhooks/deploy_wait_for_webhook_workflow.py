@@ -49,11 +49,16 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
     workflow.timeout_seconds(WORKFLOW_TIMEOUT_SECONDS)
     workflow.timeout_policy(TimeoutPolicy.TIME_OUT_WORKFLOW)
 
+    # Exercise 2: Iterate over all user_ids in settings.user_ids and get their email addresses.
     get_email_task = get_user_email(
         task_ref_name="get_user_email_ref",
-        userid=workflow.input("userid"),
+        user_id=workflow.input("user_id"),
     )
 
+    # Exercise 2: Use a DYNAMIC_FORK to send an email to each recipient.
+    # Be sure to create a JoinTask to consolidate results after your DynamicForkTask.
+    # Also ensure that your task_ref_name values are unique for each sent email, for example by
+    # appending the user_id to the task_ref_name.
     send_email_task = send_email(
         task_ref_name=SEND_EMAIL_TASK_REF,
         recipients=get_email_task.output("result"),
@@ -65,7 +70,9 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
         task_ref_name=WAIT_TASK_REF,
         matches={
             "$['type']": "customer",
-            "$['id']": workflow.input("userid"),
+            # Exercise 2: Change to 'user_ids'
+            # Be sure the payload sent by send_webhook_payload.py matches the key you use here.
+            "$['user_id']": workflow.input("user_id"),
         },
     )
 
@@ -83,7 +90,7 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
 
 def start_workflow(workflow_client) -> str:
     """Start one workflow execution and return its execution ID."""
-    request = StartWorkflowRequest(input={"userid": settings.user_id})
+    request = StartWorkflowRequest(input={"user_id": settings.user_id})
     request.name = WORKFLOW_NAME
     request.version = WORKFLOW_VERSION
 

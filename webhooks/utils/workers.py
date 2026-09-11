@@ -6,9 +6,10 @@ from conductor.client.worker.worker_task import worker_task
 
 
 @worker_task(task_definition_name="get_user_email")
-def get_user_email(userid: str) -> str:
+# Exercise 2: Change to "get_user_emails" and take a list of user_ids as input.
+def get_user_email(user_id: str) -> str:
     """Return the email address associated with a user."""
-    return f"{userid}@example.com"
+    return f"{user_id}@example.com"
 
 
 @worker_task(task_definition_name="send_email")

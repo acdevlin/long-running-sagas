@@ -15,7 +15,7 @@ def main():
     }
 
     payload = {
-        "id": settings.user_id,
+        "user_id": settings.user_id,
         "type": "customer",
         "agent_input": (
             "Introduce yourself, then inform the user that their email has been sent."
