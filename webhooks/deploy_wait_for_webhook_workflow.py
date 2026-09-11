@@ -28,10 +28,12 @@ from .utils.workers import get_user_email, send_email
 
 WORKFLOW_NAME = "wait_for_webhook_demo"
 WORKFLOW_VERSION = 1
+SEND_EMAIL_TASK_NAME = "send_email"
 SEND_EMAIL_TASK_REF = "send_email_ref"
 WAIT_TASK_REF = "wait_for_webhook_ref"
 
 DATABASE_PATH = Path(__file__).resolve().parent / "utils" / "webhook_codelab_storage.db"
+EMAIL_OUTPUT_FIELDS = ("sent_time", "subject", "recipients")
 
 WORKFLOW_TIMEOUT_SECONDS = 7 * 24 * 60 * 60
 READINESS_TIMEOUT_SECONDS = 60
@@ -132,35 +134,58 @@ def wait_until_webhook_ready(workflow_client, workflow_id: str) -> Workflow:
     )
 
 
-def get_completed_email_output(
+def get_completed_email_outputs(
     execution: Workflow,
-) -> dict[str, Any]:
-    """Return the completed send-email task output from an execution."""
-    email_task = next(
-        (
-            task
-            for task in execution.tasks or []
-            if task.reference_task_name == SEND_EMAIL_TASK_REF
-            and task.status == "COMPLETED"
-        ),
-        None,
-    )
-    if email_task is None or not isinstance(email_task.output_data, dict):
-        raise RuntimeError(f"No valid completed output found for {SEND_EMAIL_TASK_REF}")
+) -> list[dict[str, Any]]:
+    """Return valid outputs from every completed send-email task."""
+    email_tasks = [
+        task
+        for task in execution.tasks or []
+        if task.task_def_name == SEND_EMAIL_TASK_NAME and task.status == "COMPLETED"
+    ]
+    if not email_tasks:
+        raise RuntimeError(
+            f"No completed {SEND_EMAIL_TASK_NAME} task outputs were found"
+        )
 
-    return email_task.output_data
+    email_outputs = []
+    for task in email_tasks:
+        output = task.output_data
+        if not isinstance(output, dict):
+            raise RuntimeError(
+                f"Completed task {task.reference_task_name} has invalid output"
+            )
+
+        missing_fields = set(EMAIL_OUTPUT_FIELDS) - output.keys()
+        if missing_fields:
+            fields = ", ".join(sorted(missing_fields))
+            raise RuntimeError(
+                f"Completed task {task.reference_task_name} is missing: {fields}"
+            )
+
+        email_outputs.append(output)
+
+    return email_outputs
 
 
-def store_email_output(email_output: dict[str, Any]) -> int:
-    """Insert a completed email task's output into the local SQLite database."""
+def store_email_outputs(email_outputs: list[dict[str, Any]]) -> int:
+    """Insert all completed email outputs in one database transaction."""
+    if not email_outputs:
+        raise ValueError("At least one email output is required")
+
     if not DATABASE_PATH.is_file():
         raise FileNotFoundError(
             f"Database not found at {DATABASE_PATH}. "
             "Run webhooks/utils/create_sqlite_db.py first."
         )
 
+    email_rows = [
+        tuple(email_output[field] for field in EMAIL_OUTPUT_FIELDS)
+        for email_output in email_outputs
+    ]
+
     with sqlite3.connect(DATABASE_PATH) as connection:
-        cursor = connection.execute(
+        connection.executemany(
             """
             INSERT INTO emails (
                 sent_time,
@@ -169,17 +194,10 @@ def store_email_output(email_output: dict[str, Any]) -> int:
             )
             VALUES (?, ?, ?)
             """,
-            (
-                email_output["sent_time"],
-                email_output["subject"],
-                email_output["recipients"],
-            ),
+            email_rows,
         )
 
-    if cursor.lastrowid is None:
-        raise RuntimeError("SQLite did not return an ID for the stored email")
-
-    return cursor.lastrowid
+    return len(email_rows)
 
 
 def main() -> None:
@@ -207,9 +225,9 @@ def main() -> None:
         print(f"Workflow URL: {workflow_url}")
 
         execution = wait_until_webhook_ready(workflow_client, workflow_id)
-        email_output = get_completed_email_output(execution)
-        email_id = store_email_output(email_output)
-        print(f"Stored email {email_id} in {DATABASE_PATH}")
+        email_outputs = get_completed_email_outputs(execution)
+        stored_count = store_email_outputs(email_outputs)
+        print(f"Stored {stored_count} email record(s) in {DATABASE_PATH}")
     finally:
         task_handler.stop_processes()
 
