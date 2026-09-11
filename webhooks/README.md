@@ -4,12 +4,13 @@ This interactive codelab will teach you how to use a `WAIT_FOR_WEBHOOK` task to
 resume an in-progress workflow after suspending its execution for up to 7 days.
 It is an implementation of the concepts mentioned
 [in this blog post from our CTO, Viren Baraiya](https://orkes.io/blog/late-bound-sagas-why-your-agent-is-not-an-llm-in-a-loop#what-it-looks-like-in-motion).
+By the end of this codelab, you will have built a durable email-processing
+pipeline that sends emails in parallel, stores their receipts in a local
+database, and pauses until an external webhook resumes the workflow. A
+multi-turn agent will then analyze the stored email activity and produce a
+concise digest.
 
-See the top-level README file in the parent directory for instructions on how to get started.
-
-If you ever need additional guidance on an exercise, check out the "solutions" branch of this repository.
-
-## Preparation: Configure Your Environment
+## Preparation
 
 You will need to update the contents of `../settings.py` then confirm both
 Python scripts included in this directory execute correctly before you can
@@ -39,8 +40,8 @@ start the codelab content.
 3. Before sending a webhook payload you will need to create a new webhook for
    your account. **Note that in the free developer version of Orkes Conductor
    you are only allowed to have one webhook defined.** Click on the following
-   tab in the Orkes Conductor UI, click the "New webook" button in the top-right
-   hand corner::
+   tab in the Orkes Conductor UI, click the "New webhook" button in the top-right
+   hand corner:
 
     <p align="center">
       <img
@@ -77,9 +78,9 @@ start the codelab content.
    change `integration_name` to the name of your desired integration, and
    `llm_model` to the specific model that this Integration uses.
 
-6. Now run `python -m webhooks.send_webhook_payload` from the top level
+6. Now run `python -m webhooks.send_webhook_payload` from the top-level
    directory and keep an eye on the "wait_for_webhook_demo" execution from step 2. If everything is configured correctly, you will receive a `200` status
-   response from the send_webhook_payload script, your webhook will show a
+   response from the `send_webhook_payload` script, your webhook will show a
    successful execution in the Orkes Conductor UI, and there will now be some
    output in the `llm_chat_complete` task:
 
@@ -118,9 +119,9 @@ our saga.
 There are a wide variety of databases that you can use in projects, but for the
 sake of simplicity in this codelab we're going to use a local
 [sqlite3 database](https://docs.python.org/3/library/sqlite3.html) since this
-comes built-in with python3. To create a new database called
-"webhook_codelab_storage" run `python3 utils/create_sqlite_db.py` - also be sure to inspect this file to understand the schema of the
-"emails" table.
+comes built-in with Python 3. To create a new database called
+"webhook_codelab_storage", run `python3 utils/create_sqlite_db.py`. Be sure to
+inspect this file to understand the schema of the "emails" table.
 
 To achieve this, update `utils/workers.py` so that each invocation of the
 `send_email` worker returns the relevant information about its sent email. In
@@ -128,9 +129,9 @@ To achieve this, update `utils/workers.py` so that each invocation of the
 `send_email` task executions and insert one row per output into
 `utils/webhook_codelab_storage.db`.
 
-**Note: Although the starter workflow sends only one email, you will want keep
-the retrieval and persistence logic collection-based so it continues to work in
-future exercises!**
+**Note: Although the starter workflow sends only one email, you will want to
+keep the retrieval and persistence logic collection-based so it continues to
+work in future exercises!**
 
 You can check that your code is writing data to the database correctly by using
 the provided `utils/query_sqlite_db.py` helper file.
@@ -138,17 +139,17 @@ the provided `utils/query_sqlite_db.py` helper file.
 ## Exercise 2: "Fan Out" by Scaling Email Inputs
 
 Now that we have verified that we can durably store our email data in a local
-database, we can expand on the workflow iteself. Currently we're only
+database, we can expand on the workflow itself. Currently we're only
 processing a single email which isn't a particularly powerful or representative
-use-case. For this exercise, your goal is to implement "the fan-out" part of the
+use case. For this exercise, your goal is to implement "the fan-out" part of the
 saga in Viren's blog post; your workflow should accept multiple user IDs and
 send an email to each user with parallel task executions.
 
-Update the workflow and webhook payload to use a list of `user_ids` list instead of a single `user_id`, then resolve
-all email addresses in one worker task. Next, use a
-[`DynamicForkTask`](https://orkes.io/content/reference-docs/operators/dynamic-fork)
-to create one uniquely referenced `send_email` task per recipient email address, followed by a
-`JoinTask` before the existing `WAIT_FOR_WEBHOOK` task.
+Update the workflow and webhook payload to use a list of `user_ids` instead of a
+single `user_id`, then resolve all email addresses in one worker task. Next, use
+the [`DynamicForkTask`](https://orkes.io/content/reference-docs/operators/dynamic-fork)
+to create one uniquely referenced `send_email` task per recipient email
+address, followed by a `JoinTask` before the existing `WAIT_FOR_WEBHOOK` task.
 Your code from the Exercise 1 solution should store one database row for every
 completed email task.
 
@@ -162,17 +163,68 @@ In this exercise, give the `webhook_customer_service` agent two new tools:
 
 1. `summarize_email_activity`, which returns the total number of stored emails
    and the number sent to each recipient.
-1. `get_recipient_email_history`, which returns the detailed records for one
+2. `get_recipient_email_history`, which returns the detailed records for one
    recipient.
 
 Implement both functions as read-only tools using the SDK's `@tool` decorator,
 then add them to the agent's tool list. Have the agent first review the summary,
-identify the recipient with the greatest number of stored emails,
-retrieve that recipient's history, and then write a concise activity digest.
+identify the recipient with the greatest number of stored emails, retrieve that
+recipient's history, and then write a concise activity digest.
 
-You will also need to update the webhook's `agent_input` to request this analysis,
-and keep the local agent tool workers running until the workflow completes.
+You will also need to update the webhook's `agent_input` to request this
+analysis and keep the local agent tool workers running until the workflow
+completes.
 
-As part of your verification: Confirm that the
-Conductor execution contains two dependent tool calls followed by creating the final
-digest.
+As part of your verification, confirm that the Conductor execution contains two
+dependent tool calls followed by the final digest.
+
+## Recap: What You Built
+
+By completing this codelab, you built a durable, event-driven email workflow
+that:
+
+- Resolves multiple user IDs in one `get_user_emails` task, then uses a
+  `DynamicForkTask` and `JoinTask` to send the emails in parallel.
+- Collects every completed `send_email` result and stores the records in a local
+  database while the workflow is suspended.
+- Uses `WAIT_FOR_WEBHOOK` to pause without consuming worker resources, then
+  resumes when a matching external event arrives.
+- Hands the durable email history to a multi-turn agent that summarizes the
+  overall email activity.
+
+This demonstrates the central idea from
+[Late-Bound Sagas: Why Your Agent Is Not an LLM in a Loop](https://orkes.io/blog/late-bound-sagas-why-your-agent-is-not-an-llm-in-a-loop):
+Conductor owns the execution state across task and process boundaries, while
+workers perform concrete actions and the LLM decides what information it needs
+next. The end result from this codelab combines dynamically selected agent
+actions with the durable execution, suspension, and resumption cycle of a saga.
+
+## Further Explorations: Beyond This Codelab
+
+Here are a few ways you can continue expanding on the concepts covered in this
+codelab.
+
+### Process More Emails
+
+We currently derive a small, fixed set of email addresses from the hardcoded
+user IDs. Consider supplying a larger data set from a file, input generator, or
+external API. Then create _hundreds_ of dynamic branches to observe how
+Conductor schedules tasks, manages worker throughput, and joins results under
+load.
+
+### Migrate to a Cloud Database
+
+We use SQLite to keep this codelab simple and self-contained. Consider replacing
+it with a more advanced cloud-based platform such as
+[Databricks](https://docs.databricks.com/aws/en/) or
+[Snowflake](https://docs.snowflake.com/en/user-guide/databases). This will let
+you handle larger data sets and allow for shared data access while keeping your
+data storage layer separate from the agent runtime.
+
+### Add More Summarizing Agents
+
+In Exercise 3, we use a single agent to summarize all email activity. Consider
+dividing the analysis among specialized agents by recipient, subject, or time
+period, then using a coordinating agent to combine their findings into a single
+digest. This will let you explore parallel agent collaboration and the advanced
+scaling needed to process more email traffic.
