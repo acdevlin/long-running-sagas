@@ -24,7 +24,14 @@ class Settings:
     source_header: str = (
         "wait-for-webhook-demo-value"  # Replace with the value of your own "source" header.
     )
-    user_id: str = "alex_was_here"
+    # A tuple keeps the configured recipients immutable; request builders convert
+    # it to a list only when producing a JSON array for Conductor.
+    user_ids: tuple[str, ...] = (
+        "alex",
+        "user_1",
+        "user_2",
+        "user_555",
+    )
 
     @classmethod
     def from_env(self) -> "Settings":
@@ -36,7 +43,7 @@ class Settings:
             webhook_id=self.webhook_id,
             webhook_endpoint_url=self.webhook_endpoint_url,
             source_header=self.source_header,
-            user_id=self.user_id,
+            user_ids=self.user_ids,
         )
 
 

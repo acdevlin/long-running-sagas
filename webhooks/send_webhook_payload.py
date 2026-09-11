@@ -14,11 +14,12 @@ def main():
         "source": settings.source_header,
     }
 
+    # Both the key and list contents must conform to wait_for_webhook.matches
     payload = {
-        "user_id": settings.user_id,
+        "user_ids": list(settings.user_ids),
         "type": "customer",
         "agent_input": (
-            "Introduce yourself, then inform the user that their email has been sent."
+            "Introduce yourself, then inform the users that their emails have been sent."
         ),
     }
 

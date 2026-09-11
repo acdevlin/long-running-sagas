@@ -16,6 +16,8 @@ from conductor.client.configuration.configuration import Configuration
 from conductor.client.http.models import StartWorkflowRequest, Workflow
 from conductor.client.orkes_clients import OrkesClients
 from conductor.client.workflow.conductor_workflow import ConductorWorkflow
+from conductor.client.workflow.task.dynamic_fork_task import DynamicForkTask
+from conductor.client.workflow.task.join_task import JoinTask
 from conductor.client.workflow.task.timeout_policy import TimeoutPolicy
 from conductor.client.workflow.task.wait_for_webhook_task import wait_for_webhook
 from conductor.ai.agents import AgentRuntime
@@ -24,12 +26,15 @@ from settings import settings
 
 from .utils.agent_task import AgentTask
 from .utils.webhook_agent import webhook_agent
-from .utils.workers import get_user_email, send_email
+from .utils.workers import (
+    DYNAMIC_TASKS_INPUTS_PARAM,
+    DYNAMIC_TASKS_PARAM,
+    SEND_EMAIL_TASK_NAME,
+    get_user_emails,
+)
 
 WORKFLOW_NAME = "wait_for_webhook_demo"
 WORKFLOW_VERSION = 1
-SEND_EMAIL_TASK_NAME = "send_email"
-SEND_EMAIL_TASK_REF = "send_email_ref"
 WAIT_TASK_REF = "wait_for_webhook_ref"
 
 DATABASE_PATH = Path(__file__).resolve().parent / "utils" / "webhook_codelab_storage.db"
@@ -50,31 +55,45 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
     workflow.description = "Durable wait-for-webhook example"
     workflow.timeout_seconds(WORKFLOW_TIMEOUT_SECONDS)
     workflow.timeout_policy(TimeoutPolicy.TIME_OUT_WORKFLOW)
+    workflow.input_parameters(["user_ids"])
 
-    # Exercise 2: Iterate over all user_ids in settings.user_ids and get their email addresses.
-    get_email_task = get_user_email(
-        task_ref_name="get_user_email_ref",
-        user_id=workflow.input("user_id"),
-    )
-
-    # Exercise 2: Use a DYNAMIC_FORK to send an email to each recipient.
-    # Be sure to create a JoinTask to consolidate results after your DynamicForkTask.
-    # Also ensure that your task_ref_name values are unique for each sent email, for example by
-    # appending the user_id to the task_ref_name.
-    send_email_task = send_email(
-        task_ref_name=SEND_EMAIL_TASK_REF,
-        recipients=get_email_task.output("result"),
+    # Render the full recipient list and prepare every branch in a single worker task
+    get_emails_task = get_user_emails(
+        task_ref_name="get_user_emails_ref",
+        user_ids=workflow.input("user_ids"),
         subject="Hello from Alex",
         body="foo bar qua",
+    )
+
+    # Dynamic branch references are unknown until runtime, so we use an empty join_on
+    # to tell the Join to wait for all branches created by its Dynamic Fork.
+    send_emails_join = JoinTask(
+        task_ref_name="send_emails_join",
+        join_on=[],
+    )
+    send_emails_fork = DynamicForkTask(
+        task_ref_name="send_emails_fork",
+        tasks_param=DYNAMIC_TASKS_PARAM,
+        tasks_input_param_name=DYNAMIC_TASKS_INPUTS_PARAM,
+        join_task=send_emails_join,
+    )
+    # The SDK emits the supplied Join immediately after the Dynamic Fork. These
+    # inputs connect the lookup worker's generated definitions and branch data.
+    send_emails_fork.input_parameter(
+        DYNAMIC_TASKS_PARAM,
+        get_emails_task.output(DYNAMIC_TASKS_PARAM),
+    )
+    send_emails_fork.input_parameter(
+        DYNAMIC_TASKS_INPUTS_PARAM,
+        get_emails_task.output(DYNAMIC_TASKS_INPUTS_PARAM),
     )
 
     webhook_wait = wait_for_webhook(
         task_ref_name=WAIT_TASK_REF,
         matches={
             "$['type']": "customer",
-            # Exercise 2: Change to 'user_ids'
-            # Be sure the payload sent by send_webhook_payload.py matches the key you use here.
-            "$['user_id']": workflow.input("user_id"),
+            # Assume that we want emails sent to all provided user IDs
+            "$['user_ids']": workflow.input("user_ids"),
         },
     )
 
@@ -84,7 +103,7 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
         prompt=webhook_wait.output("agent_input"),
     )
 
-    workflow >> get_email_task >> send_email_task >> webhook_wait >> agent_task
+    workflow >> get_emails_task >> send_emails_fork >> webhook_wait >> agent_task
     workflow.output_parameter("agent_response", agent_task.output("text"))
 
     return workflow
@@ -92,7 +111,8 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
 
 def start_workflow(workflow_client) -> str:
     """Start one workflow execution and return its execution ID."""
-    request = StartWorkflowRequest(input={"user_id": settings.user_id})
+    # Convert the immutable user_ids list into the JSON array expected by Conductor.
+    request = StartWorkflowRequest(input={"user_ids": list(settings.user_ids)})
     request.name = WORKFLOW_NAME
     request.version = WORKFLOW_VERSION
 
@@ -138,6 +158,7 @@ def get_completed_email_outputs(
     execution: Workflow,
 ) -> list[dict[str, Any]]:
     """Return valid outputs from every completed send-email task."""
+    # Task-definition names remain stable while Dynamic Fork references do not.
     email_tasks = [
         task
         for task in execution.tasks or []
@@ -184,6 +205,7 @@ def store_email_outputs(email_outputs: list[dict[str, Any]]) -> int:
         for email_output in email_outputs
     ]
 
+    # Use a single DB transaction to avoid partial insert failures.
     with sqlite3.connect(DATABASE_PATH) as connection:
         connection.executemany(
             """
