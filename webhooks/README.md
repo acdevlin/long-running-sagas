@@ -46,20 +46,31 @@ You are now ready to proceed with the exercises!
 
 ## Exercise 1: Increase Durability with Persistent Local Storage
 
-Your goal for this exercise is to store task output in a local database.
+Your goal for this exercise is to store the output from every completed
+`send_email` task in a local database.
 
 As noted in Viren's linked blog post, one of the big perks to this late-bound saga architectural approach is we can write data from our tasks before the `WAIT_FOR_WEBHOOK` to disk so we are no longer bound by our agentic runtime. We can take this concept even further by storing data in a SQL database for guaranteed ACID compliance and data integrity during the "suspended" portion of our saga.
 
 There are a wide variety of databases that you can use in projects, but for the sake of simplicity in this codelab we're going to use a local [sqlite3 database](https://docs.python.org/3/library/sqlite3.html) since this comes built-in with python3. To create a new database called "webhook_codelab_storage" run `python3 utils/create_sqlite_db.py` which creates a new - also be sure to inspect this file to understand the schema of the "emails" table.
 
-To achieve this, update `utils/workers.py` so that the `send_email` worker task returns relevant information about each sent email, then in `deploy_wait_for_webhook_workflow.py` store this data in `utils/webhook_codelab_storage.db`
+To achieve this, update `utils/workers.py` so that each invocation of the
+`send_email` worker returns the relevant information about its sent email. In
+`deploy_wait_for_webhook_workflow.py`, retrieve the outputs from all completed
+`send_email` task executions and insert one row per output into
+`utils/webhook_codelab_storage.db`.
+
+**Note: Although the starter workflow sends only one email,
+you will want keep the retrieval and persistence logic collection-based so it continues
+to work in future exercises!**
 
 You can check that your code is writing data to the database correctly by using the provided `utils/query_sqlite_db.py` helper file.
 
 ## Exercise 2: "Fan Out" by Scaling Email Inputs
 
-(TODO)
+Now that we have verified that we can durably store our email data in a local database, we can expand on the workflow iteself. Currently we're only processing a single email which isn't a particularly powerful or representative use-case. For this exercise, your goal is to expand from a single emailer task to (ideally) a few dozen workers in parallel. This is referred to as "the fan-out" part of the saga in Viren's blog post.
+
+Start the workflow with at least three user IDs. Verify that one lookup task runs, three uniquely referenced send_email tasks appear under the Dynamic Fork, the Join waits for all three, and three email records are persisted before the workflow reaches WAIT_FOR_WEBHOOK.
 
 ## Exercise 3: Multi-Turn Agentic Processing
 
-(TODO)
+We have now scaled up the email inputs to our persistent pipeline. However, you have probably noticed that the downstream processing for our agent isn't doing anything meaningful with the email data at this time;

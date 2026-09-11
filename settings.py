@@ -22,6 +22,8 @@ class Settings:
     source_header: str = (
         "your_source_header_here"  # Replace with your own source header.
     )
+    # Exercise 2: Add more user_ids to simulate multiple email recipients.
+    # The workflow will send an email to each user_id in this list.
     user_id: str = "user_12345"
 
     @classmethod
