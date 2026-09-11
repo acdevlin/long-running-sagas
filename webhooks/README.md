@@ -9,7 +9,7 @@ See the top-level README file in the parent directory for instructions on how to
 
 If you ever need additional guidance on an exercise, check out the "solutions" branch of this repository.
 
-## Preparation
+## Preparation: Configure Your Environment
 
 You will need to update the contents of `../settings.py` then confirm both
 Python scripts included in this directory execute correctly before you can
@@ -78,8 +78,7 @@ start the codelab content.
    `llm_model` to the specific model that this Integration uses.
 
 6. Now run `python -m webhooks.send_webhook_payload` from the top level
-   directory and keep an eye on the "wait_for_webhook_demo" execution from step
-   2. If everything is configured correctly, you will receive a `200` status
+   directory and keep an eye on the "wait_for_webhook_demo" execution from step 2. If everything is configured correctly, you will receive a `200` status
    response from the send_webhook_payload script, your webhook will show a
    successful execution in the Orkes Conductor UI, and there will now be some
    output in the `llm_chat_complete` task:
@@ -120,8 +119,7 @@ There are a wide variety of databases that you can use in projects, but for the
 sake of simplicity in this codelab we're going to use a local
 [sqlite3 database](https://docs.python.org/3/library/sqlite3.html) since this
 comes built-in with python3. To create a new database called
-"webhook_codelab_storage" run `python3 utils/create_sqlite_db.py` which creates
-a new - also be sure to inspect this file to understand the schema of the
+"webhook_codelab_storage" run `python3 utils/create_sqlite_db.py` - also be sure to inspect this file to understand the schema of the
 "emails" table.
 
 To achieve this, update `utils/workers.py` so that each invocation of the
@@ -156,8 +154,25 @@ completed email task.
 
 ## Exercise 3: Multi-Turn Agentic Processing
 
-(WIP)
+We have now scaled up the email inputs to our persistent pipeline. Now it's
+time to update the agent downstream from the `WAIT_FOR_WEBHOOK` task, since it
+currently doesn't do anything meaningful with the email data.
 
-We have now scaled up the email inputs to our persistent pipeline. However, you
-have probably noticed that the downstream processing for our agent isn't doing
-anything meaningful with the email data at this time;
+In this exercise, give the `webhook_customer_service` agent two new tools:
+
+1. `summarize_email_activity`, which returns the total number of stored emails
+   and the number sent to each recipient.
+1. `get_recipient_email_history`, which returns the detailed records for one
+   recipient.
+
+Implement both functions as read-only tools using the SDK's `@tool` decorator,
+then add them to the agent's tool list. Have the agent first review the summary,
+identify the recipient with the greatest number of stored emails,
+retrieve that recipient's history, and then write a concise activity digest.
+
+You will also need to update the webhook's `agent_input` to request this analysis,
+and keep the local agent tool workers running until the workflow completes.
+
+As part of your verification: Confirm that the
+Conductor execution contains two dependent tool calls followed by creating the final
+digest.
