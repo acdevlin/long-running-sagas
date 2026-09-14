@@ -1,8 +1,9 @@
 # Webhooks Codelab
 
-This interactive codelab will teach you how to use a `WAIT_FOR_WEBHOOK` task to
-resume an in-progress workflow after suspending its execution for up to 7 days.
-It is an implementation of the concepts mentioned
+This interactive codelab will teach you how to use a
+[`WAIT_FOR_WEBHOOK` task](https://orkes.io/content/reference-docs/system-tasks/wait-for-webhook)
+to resume an in-progress workflow after suspending its execution for up to 7
+days. It is an implementation of the concepts mentioned
 [in this blog post from our CTO, Viren Baraiya](https://orkes.io/blog/late-bound-sagas-why-your-agent-is-not-an-llm-in-a-loop#what-it-looks-like-in-motion).
 By the end of this codelab, you will have built a durable email-processing
 pipeline that sends emails in parallel, stores their receipts in a local
@@ -37,11 +38,12 @@ start the codelab content.
       >
     </p>
 
-3. Before sending a webhook payload you will need to create a new webhook for
-   your account. **Note that in the free developer version of Orkes Conductor
-   you are only allowed to have one webhook defined.** Click on the following
-   tab in the Orkes Conductor UI, click the "New webhook" button in the top-right
-   hand corner:
+3. Before sending a webhook payload, follow the
+   [webhook integration guide](https://orkes.io/content/developer-guides/webhook-integration)
+   to create a new webhook for your account. **Note that in the free developer
+   version of Orkes Conductor you are only allowed to have one webhook defined.**
+   Click on the Webhook tab in the Orkes Conductor UI, then click the "New
+   webhook" button in the top-right hand corner:
 
     <p align="center">
       <img

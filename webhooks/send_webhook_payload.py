@@ -17,6 +17,8 @@ def main():
     payload = {
         "user_id": settings.user_id,
         "type": "customer",
+        # Exercise 3: Replace this prmopt with a request to summarize stored email
+        # activity, inspect the busiest recipient's history, and return a digest.
         "agent_input": (
             "Introduce yourself, then inform the user that their email has been sent."
         ),

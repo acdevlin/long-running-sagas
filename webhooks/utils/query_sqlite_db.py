@@ -9,6 +9,8 @@ from pathlib import Path
 DATABASE_PATH = Path(__file__).with_name("webhook_codelab_storage.db")
 
 
+# Exercise 3: Reuse this read-only query for the recipient-history tool. The
+# optional recipient argument limits the result to that recipient's records.
 def fetch_emails(
     database_path: Path = DATABASE_PATH,
     recipient: str | None = None,
@@ -41,6 +43,8 @@ def fetch_emails(
         return connection.execute(query, parameters).fetchall()
 
 
+# Exercise 3: Add a read-only query helper here that groups stored emails by
+# recipient and returns each recipient with its email count for the summary tool.
 def print_emails(emails: list[sqlite3.Row]) -> None:
     """Print email rows in an aligned table with database field headings."""
     field_names = tuple(emails[0].keys())

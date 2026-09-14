@@ -24,6 +24,8 @@ class Settings:
     )
     # Exercise 2: Add more user_ids to simulate multiple email recipients.
     # The workflow will send an email to each user_id in this list.
+    # Exercise 3: Repeat one user ID so the agent has a clear most-active
+    # recipient to identify from the stored email activity.
     user_id: str = "user_12345"
 
     @classmethod
