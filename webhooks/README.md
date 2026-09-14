@@ -174,8 +174,10 @@ In this exercise, give the `webhook_customer_service` agent two new tools:
 
 Implement both functions as read-only tools using the SDK's `@tool` decorator,
 then add them to the agent's tool list. Have the agent first review the summary,
-identify the recipient with the greatest number of stored emails, retrieve that
-recipient's history, and then write a concise activity digest.
+and, if no stored activity exists, return a concise no-activity digest.
+Otherwise, have it identify the recipient with the greatest number of stored
+emails, retrieve that recipient's history, and then write a concise activity
+digest.
 
 You will also need to update the webhook's `agent_input` to request this
 analysis. After the workflow reaches `WAIT_FOR_WEBHOOK` and the launcher exits,
@@ -183,8 +185,10 @@ run `python -m webhooks.serve_webhook_agent` in another terminal. Keep this
 separate process running while you send the webhook so the resumed workflow can
 execute the agent's local database tools.
 
-As part of your verification, confirm that the Conductor execution contains two
-dependent tool calls followed by the final digest.
+As part of your verification with a non-empty database, confirm that the
+Conductor execution contains two dependent tool calls followed by the final
+digest. With an empty database, confirm that the summary call is followed
+directly by the no-activity digest.
 
 ## Recap: What You Built
 

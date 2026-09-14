@@ -19,7 +19,10 @@ def main():
         "user_ids": list(settings.user_ids),
         "type": "customer",
         "agent_input": (
-            "Introduce yourself, then inform the users that their emails have been sent."
+            "Create an email activity digest. First summarize all stored email "
+            "activity. If there is no stored activity, return a concise no-activity "
+            "digest. Otherwise, inspect the history of the recipient with the "
+            "greatest number of emails before returning your final analysis."
         ),
     }
 

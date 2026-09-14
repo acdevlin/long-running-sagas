@@ -27,6 +27,9 @@ class Settings:
     # A tuple keeps the configured recipients immutable; request builders convert
     # it to a list only when producing a JSON array for Conductor.
     user_ids: tuple[str, ...] = (
+        # Repeats give Exercise 3 a clear most-active recipient to identify.
+        "alex",
+        "alex",
         "alex",
         "user_1",
         "user_2",
