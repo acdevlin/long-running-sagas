@@ -140,6 +140,7 @@ def wait_until_webhook_ready(workflow_client, workflow_id: str) -> Workflow:
         )
 
         if wait_task and wait_task.status == "IN_PROGRESS":
+            print(f"Webhook URL: {settings.webhook_endpoint_url}")
             return execution
 
         if execution.status in {"FAILED", "TIMED_OUT", "TERMINATED"}:

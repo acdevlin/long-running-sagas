@@ -10,8 +10,7 @@ This interactive codelab will teach you how to use a `WAIT_FOR_WEBHOOK` task to 
 
 To run the provided code, perform the following steps after cloning this repository and changing the contents of `settings.py` for your own account details:
 
-1. `python -m webhooks.deploy_wait_for_webhook_workflow`
-1. Wait for the resulting workflow to reach the "wait_for_webhook_ref" task.
-1. In another terminal, run `python -m webhooks.serve_webhook_agent` and leave
-   it running to serve the agent's local database tools.
-1. Back in your first terminal: run `python -m webhooks.send_webhook_payload`
+1. Deploy and start the `wait_for_webhook_demo` workflow by running `python -m webhooks.deploy_wait_for_webhook_workflow`
+1. Wait for the workflow to reach the "wait_for_webhook_ref" task. At this point it is suspended and you can leave it here indefinitely without using any computational resources.
+1. When you're ready to continue workflow execution, another terminal window run `python -m webhooks.serve_webhook_agent` and leave it running to serve the agent's local database tools.
+1. Back in your first terminal, resume workflow execution and mark the "wait_for_webhook_ref" task as completed by running `python -m webhooks.send_webhook_payload`
