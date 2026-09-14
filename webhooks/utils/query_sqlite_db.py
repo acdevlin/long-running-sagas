@@ -9,8 +9,11 @@ from pathlib import Path
 DATABASE_PATH = Path(__file__).with_name("webhook_codelab_storage.db")
 
 
-def fetch_emails(database_path: Path = DATABASE_PATH) -> list[sqlite3.Row]:
-    """Return all stored emails in insertion order.
+def fetch_emails(
+    database_path: Path = DATABASE_PATH,
+    recipient: str | None = None,
+) -> list[sqlite3.Row]:
+    """Return stored emails in insertion order, optionally for one recipient.
 
     Checking the path first prevents ``sqlite3.connect`` from silently creating
     an empty database when the codelab database has not been initialized.
@@ -20,14 +23,22 @@ def fetch_emails(database_path: Path = DATABASE_PATH) -> list[sqlite3.Row]:
             f"Database not found at {database_path}. " "Run create_sqlite_db.py first."
         )
 
-    # closing() guarantees the connection is released after the rows are read.
-    with closing(sqlite3.connect(database_path)) as connection:
+    query = """
+        SELECT *
+        FROM emails
+        """
+    parameters: tuple[str, ...] = ()
+    if recipient is not None:
+        query += "WHERE recipients = ?\n"
+        parameters = (recipient,)
+    query += "ORDER BY id"
+
+    # URI read-only mode prevents this query helper and the agent tools that use
+    # it from modifying the codelab database.
+    database_uri = f"{database_path.resolve().as_uri()}?mode=ro"
+    with closing(sqlite3.connect(database_uri, uri=True)) as connection:
         connection.row_factory = sqlite3.Row
-        return connection.execute("""
-            SELECT *
-            FROM emails
-            ORDER BY id
-            """).fetchall()
+        return connection.execute(query, parameters).fetchall()
 
 
 def print_emails(emails: list[sqlite3.Row]) -> None:
@@ -41,8 +52,7 @@ def print_emails(emails: list[sqlite3.Row]) -> None:
 
     def format_row(values: tuple[str, ...]) -> str:
         return " | ".join(
-            value.ljust(column_widths[index])
-            for index, value in enumerate(values)
+            value.ljust(column_widths[index]) for index, value in enumerate(values)
         )
 
     print(format_row(field_names))
@@ -61,9 +71,8 @@ def main() -> int:
 
     if not emails:
         print(f"No emails found in {DATABASE_PATH}")
-        return 0
-
-    print_emails(emails)
+    else:
+        print_emails(emails)
 
     return 0
 
