@@ -2,8 +2,9 @@
 """Register and start a durable webhook-driven workflow.
 
 The program keeps its local workers running until the workflow reaches the
-WAIT_FOR_WEBHOOK task, then exits. Conductor keeps the workflow running and
-resumes it after a callback is sent by ``send_webhook_payload.py``.
+WAIT_FOR_WEBHOOK task, stores the completed email results, then exits. Conductor
+keeps the workflow suspended until ``send_webhook_payload.py`` sends a callback;
+``serve_webhook_agent.py`` runs the local tools needed after it resumes.
 """
 
 import sqlite3
@@ -139,8 +140,6 @@ def wait_until_webhook_ready(workflow_client, workflow_id: str) -> Workflow:
         )
 
         if wait_task and wait_task.status == "IN_PROGRESS":
-            print(f"{WAIT_TASK_REF} is ready")
-            print(f"Webhook URL: {settings.webhook_endpoint_url}")
             return execution
 
         if execution.status in {"FAILED", "TIMED_OUT", "TERMINATED"}:
@@ -250,6 +249,12 @@ def main() -> None:
         email_outputs = get_completed_email_outputs(execution)
         stored_count = store_email_outputs(email_outputs)
         print(f"Stored {stored_count} email record(s) in {DATABASE_PATH}")
+        print(f"{WAIT_TASK_REF} is ready")
+        print(
+            "Before sending the webhook, start the agent tool workers with "
+            "`python -m webhooks.serve_webhook_agent`."
+        )
+        print(f"Webhook URL: {settings.webhook_endpoint_url}")
     finally:
         task_handler.stop_processes()
 

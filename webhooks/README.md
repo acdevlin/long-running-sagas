@@ -78,11 +78,18 @@ start the codelab content.
    change `integration_name` to the name of your desired integration, and
    `llm_model` to the specific model that this Integration uses.
 
-6. Now run `python -m webhooks.send_webhook_payload` from the top-level
-   directory and keep an eye on the "wait_for_webhook_demo" execution from step 2. If everything is configured correctly, you will receive a `200` status
+6. After the workflow reaches `wait_for_webhook_ref` and stores its email
+   records, run `python -m webhooks.serve_webhook_agent` in another terminal.
+   Leave this process running so it can serve the agent's local database tools
+   after the workflow resumes.
+
+7. Now run `python -m webhooks.send_webhook_payload` from the top-level
+   directory and keep an eye on the "wait_for_webhook_demo" execution from step
+   2. If everything is configured correctly, you will receive a `200` status
    response from the `send_webhook_payload` script, your webhook will show a
    successful execution in the Orkes Conductor UI, and there will now be some
-   output in the `llm_chat_complete` task:
+   output in the `llm_chat_complete` task. After the workflow completes, stop
+   the agent tool worker process with Ctrl+C.
 
     <p align="center">
       <img
@@ -172,8 +179,10 @@ identify the recipient with the greatest number of stored emails, retrieve that
 recipient's history, and then write a concise activity digest.
 
 You will also need to update the webhook's `agent_input` to request this
-analysis and keep the local agent tool workers running until the workflow
-completes.
+analysis. After the workflow reaches `WAIT_FOR_WEBHOOK` and the launcher exits,
+run `python -m webhooks.serve_webhook_agent` in another terminal. Keep this
+separate process running while you send the webhook so the resumed workflow can
+execute the agent's local database tools.
 
 As part of your verification, confirm that the Conductor execution contains two
 dependent tool calls followed by the final digest.
