@@ -18,9 +18,9 @@ _, model = settings.llm_model.split("/", 1)
 webhook_agent = Agent(
     name="webhook_customer_service",
     model=f"{settings.integration_name}/{model}",
-    # Exercise 3: Tell the agent to call summarize_email_activity first. If the
-    # summary is empty, it should return a no-activity digest without calling the
-    # second tool. Otherwise, it should find the busiest recipient, call
+    # Exercise 3: Tell the agent to call summarize_email_activity first.
+    # If the summary is empty, it should return a no-activity digest.
+    # Otherwise, it should find the busiest recipient, call
     # get_recipient_email_history for that recipient, and return a final digest.
     # Register both tools and allow enough turns for both calls and the response.
     instructions=(
