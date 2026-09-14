@@ -2,8 +2,9 @@
 """Register and start a durable webhook-driven workflow.
 
 The program keeps its local workers running until the workflow reaches the
-WAIT_FOR_WEBHOOK task, then exits. Conductor keeps the workflow running and
-resumes it after a callback is sent by ``send_webhook_payload.py``.
+WAIT_FOR_WEBHOOK task, stores the completed email results, then exits. Conductor
+keeps the workflow suspended until ``send_webhook_payload.py`` sends a callback;
+``serve_webhook_agent.py`` runs the local tools needed after it resumes.
 """
 
 import time
@@ -111,12 +112,11 @@ def wait_until_webhook_ready(workflow_client, workflow_id: str) -> None:
         )
 
         if wait_task and wait_task.status == "IN_PROGRESS":
-            print(f"{WAIT_TASK_REF} is ready")
             print(f"Webhook URL: {settings.webhook_endpoint_url}")
             # Exercise 1: Return this execution, including its tasks, so the caller can
             # retrieve every completed send_email output. Treat the results as a
             # collection even though the starter workflow sends only one email.
-            return
+            return None
 
         if execution.status in {"FAILED", "TIMED_OUT", "TERMINATED"}:
             raise RuntimeError(f"Workflow entered terminal status {execution.status}")
@@ -153,10 +153,16 @@ def main() -> None:
         workflow_url = f"{config.ui_host.rstrip('/')}/execution/{workflow_id}"
         print(f"Workflow URL: {workflow_url}")
 
-        wait_until_webhook_ready(workflow_client, workflow_id)
+        _ = wait_until_webhook_ready(workflow_client, workflow_id)
         # Exercise 1: Retrieve every completed send_email task output and store one
         # database row per email. Do not rely on one fixed task reference because
         # Exercise 2 will generate multiple send_email tasks with unique references.
+        print(f"{WAIT_TASK_REF} is ready")
+        print(
+            "Before sending the webhook, start the agent tool workers with "
+            "`python -m webhooks.serve_webhook_agent`."
+        )
+        print(f"Webhook URL: {settings.webhook_endpoint_url}")
     finally:
         task_handler.stop_processes()
 
