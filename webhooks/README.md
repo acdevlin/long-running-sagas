@@ -84,11 +84,10 @@ start the codelab content.
    after the workflow resumes.
 
 7. Now run `python -m webhooks.send_webhook_payload` from the top-level
-   directory and keep an eye on the "wait_for_webhook_demo" execution from step
-   2. If everything is configured correctly, you will receive a `200` status
+   directory and keep an eye on the "wait_for_webhook_demo" execution from step 2. If everything is configured correctly, you will receive a `200` status
    response from the `send_webhook_payload` script, your webhook will show a
    successful execution in the Orkes Conductor UI, and there will now be some
-   output in the `llm_chat_complete` task. After the workflow completes, stop
+   output in the `invoke_agent` task. After the workflow completes, stop
    the agent tool worker process with Ctrl+C.
 
     <p align="center">
@@ -102,7 +101,7 @@ start the codelab content.
     <p align="center">
       <img
         src="images/successful_workflow_run.png"
-        alt="A successful run of the wait_for_webhook_demo workflow in the Orkes Conductor UI, showing output in the llm_chat_complete task."
+        alt="A successful run of the wait_for_webhook_demo workflow in the Orkes Conductor UI, showing output in the invoke_agent task."
         height="300"
       >
     </p>
