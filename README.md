@@ -12,4 +12,6 @@ To run the provided code, perform the following steps after cloning this reposit
 
 1. `python -m webhooks.deploy_wait_for_webhook_workflow`
 1. Wait for the resulting workflow to reach the "wait_for_webhook_ref" task.
-1. `python -m webhooks.send_webhook_payload`
+1. In another terminal, run `python -m webhooks.serve_webhook_agent` and leave
+   it running to serve the agent's local database tools.
+1. Back in your first terminal: run `python -m webhooks.send_webhook_payload`
