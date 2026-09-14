@@ -28,6 +28,26 @@ def _open_read_only_database(
         yield connection
 
 
+@contextmanager
+def _open_read_only_database(
+    database_path: Path = DATABASE_PATH,
+) -> Generator[sqlite3.Connection]:
+    """Helper function that opens a read-only connection to a specified database."""
+    if not database_path.is_file():
+        raise FileNotFoundError(
+            f"Database not found at {database_path}. Run create_sqlite_db.py first."
+        )
+
+    # URI mode prevents this query helper and the agent tools that use it from
+    # modifying the codelab database.
+    database_uri = f"{database_path.resolve().as_uri()}?mode=ro"
+    with closing(sqlite3.connect(database_uri, uri=True)) as connection:
+        connection.row_factory = sqlite3.Row
+        yield connection
+
+
+# Exercise 3: Reuse this read-only query for the recipient-history tool. The
+# optional recipient argument limits the result to that recipient's records.
 def fetch_emails(
     database_path: Path = DATABASE_PATH,
     recipient: str | None = None,
@@ -68,6 +88,25 @@ def fetch_email_activity(
         return connection.execute(query).fetchall()
 
 
+def fetch_email_activity(
+    database_path: Path = DATABASE_PATH,
+) -> list[sqlite3.Row]:
+    """Return one email-count row per recipient, ordered by activity."""
+    query = """
+        SELECT
+            recipients AS recipient,
+            COUNT(*) AS email_count
+        FROM emails
+        GROUP BY recipients
+        ORDER BY email_count DESC, recipient
+        """
+
+    with _open_read_only_database(database_path) as connection:
+        return connection.execute(query).fetchall()
+
+
+# Exercise 3: Add a read-only query helper here that groups stored emails by
+# recipient and returns each recipient with its email count for the summary tool.
 def print_emails(emails: list[sqlite3.Row]) -> None:
     """Print email rows in an aligned table with database field headings."""
     field_names = tuple(emails[0].keys())
