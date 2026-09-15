@@ -18,8 +18,6 @@ def main():
     payload = {
         "user_ids": list(settings.user_ids),
         "type": "customer",
-        # Exercise 3: Replace this prmopt with a request to summarize stored email
-        # activity, inspect the busiest recipient's history, and return a digest.
         "agent_input": (
             "Create an email activity digest. First summarize all stored email "
             "activity. If there is no stored activity, return a concise no-activity "
