@@ -13,6 +13,8 @@ from settings import settings
 # 1) summarize_email_activity: Return total and per-recipient email counts.
 # Make it clear when no records exist so the agent can skip the recipient-history lookup.
 # 2) get_recipient_email_history: return one recipient's email records.
+# Exercise 3: Convert the sqlite3.Row results from the query helpers to plain
+# dictionaries before returning them from either tool.
 _, model = settings.llm_model.split("/", 1)
 
 webhook_agent = Agent(
