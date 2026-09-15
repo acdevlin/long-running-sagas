@@ -28,24 +28,6 @@ def _open_read_only_database(
         yield connection
 
 
-@contextmanager
-def _open_read_only_database(
-    database_path: Path = DATABASE_PATH,
-) -> Generator[sqlite3.Connection]:
-    """Helper function that opens a read-only connection to a specified database."""
-    if not database_path.is_file():
-        raise FileNotFoundError(
-            f"Database not found at {database_path}. Run create_sqlite_db.py first."
-        )
-
-    # URI mode prevents this query helper and the agent tools that use it from
-    # modifying the codelab database.
-    database_uri = f"{database_path.resolve().as_uri()}?mode=ro"
-    with closing(sqlite3.connect(database_uri, uri=True)) as connection:
-        connection.row_factory = sqlite3.Row
-        yield connection
-
-
 def fetch_emails(
     database_path: Path = DATABASE_PATH,
     recipient: str | None = None,
