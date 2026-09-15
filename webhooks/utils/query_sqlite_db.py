@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Print every email stored by the webhook codelab."""
+"""Prints emails stored by the DB for the webhook codelab."""
 
 import sqlite3
 import sys
