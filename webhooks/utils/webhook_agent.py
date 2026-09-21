@@ -38,6 +38,12 @@ def get_recipient_email_history(recipient: str) -> dict[str, Any]:
     }
 
 
+if "/" not in settings.llm_model:
+    raise ValueError(
+        "settings.llm_model must use the 'provider/model' format, for example "
+        f"'openai/gpt-5-nano'; got {settings.llm_model!r}."
+    )
+
 _, model = settings.llm_model.split("/", 1)
 
 webhook_agent = Agent(
