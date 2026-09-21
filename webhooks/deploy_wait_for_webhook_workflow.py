@@ -112,7 +112,6 @@ def wait_until_webhook_ready(workflow_client, workflow_id: str) -> None:
         )
 
         if wait_task and wait_task.status == "IN_PROGRESS":
-            print(f"Webhook URL: {settings.webhook_endpoint_url}")
             # Exercise 1: Return this execution, including its tasks, so the caller can
             # retrieve every completed send_email output. Treat the results as a
             # collection even though the starter workflow sends only one email.
