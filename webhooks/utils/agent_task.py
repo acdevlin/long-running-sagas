@@ -7,6 +7,10 @@ from conductor.client.http.models import WorkflowTask
 from conductor.client.workflow.task.task import TaskInterface
 from conductor.client.workflow.task.task_type import TaskType
 
+# Lets AgentTask pass the real enum member when available and fall back otherwise.
+# None until the SDK adds TaskType.AGENT (absent in conductor-python 2.0.0).
+_AGENT_TASK_TYPE: TaskType | None = getattr(TaskType, "AGENT", None)
+
 
 class AgentTask(TaskInterface):
     """Invoke a deployed agent using the server's native AGENT task."""
@@ -19,7 +23,7 @@ class AgentTask(TaskInterface):
     ) -> None:
         super().__init__(
             task_reference_name=task_ref_name,
-            task_type=TaskType.USER_DEFINED,
+            task_type=_AGENT_TASK_TYPE or TaskType.USER_DEFINED,
             task_name="invoke_agent",
             input_parameters={
                 "agentType": "conductor",
@@ -31,8 +35,10 @@ class AgentTask(TaskInterface):
         )
 
     def to_workflow_task(self) -> WorkflowTask:
-        # The SDK requires a TaskType enum but does not yet include AGENT.
-        # Replace the placeholder only in the definition sent to the server.
+        """Serialize the task with the AGENT type the server expects."""
         task = super().to_workflow_task()
-        task.type = "AGENT"
+        if _AGENT_TASK_TYPE is None:
+            # The base class only accepts TaskType members, so __init__ used a
+            # placeholder. Correct the type in the definition sent to the server.
+            task.type = "AGENT"
         return task
