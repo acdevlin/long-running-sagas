@@ -13,9 +13,11 @@ concise digest.
 
 ## Preparation
 
-You will need to update the contents of `../settings.py` then confirm both
-Python scripts included in this directory execute correctly before you can
-start the codelab content.
+Complete the [Setup section of the top-level README](../README.md#setup) first
+so the Conductor SDK can authenticate with your account. You will then need to
+update the contents of `../settings.py` and confirm the three Python scripts
+included in this directory execute correctly before you can start the codelab
+content.
 
 <details>
 
@@ -25,10 +27,13 @@ start the codelab content.
    beginning with "Replace" next to them. These need to be updated for your own
    account details.
 
-2. After replacing `integration_name` and `llm_model` with your integration
-   details, run `python -m webhooks.deploy_wait_for_webhook_workflow` from the
-   top-level directory for all codelabs. This will deploy and run a workflow
-   called "wait_for_webhook_demo" to your Orkes account that looks like this:
+2. Make sure you have at least one
+   [Integration added to your Orkes account](https://developer.orkescloud.com/integrations?view=connections-and-resources),
+   then set `integration_name` to the name of that integration and `llm_model`
+   to the specific model it uses. Now run
+   `python -m webhooks.deploy_wait_for_webhook_workflow` from the top-level
+   directory for all codelabs. This will deploy and run a workflow called
+   "wait_for_webhook_demo" to your Orkes account that looks like this:
 
     <p align="center">
       <img
@@ -74,11 +79,7 @@ start the codelab content.
    the ID of your new webhook which can be found
    [in the configure-webhooks page of Orkes Conductor](https://developer.orkescloud.com/configure-webhooks).
    Set `source_header` to the value of the "source" header you entered in your
-   webhook; I suggested `wait-for-webhook-demo-value` as an example. Finally,
-   make sure you have at least one
-   [Integration added to your Orkes account](https://developer.orkescloud.com/integrations?view=connections-and-resources) -
-   change `integration_name` to the name of your desired integration, and
-   `llm_model` to the specific model that this Integration uses.
+   webhook; I suggest `wait-for-webhook-demo-value` as an example.
 
 6. After the workflow reaches `wait_for_webhook_ref` and stores its email
    records, run `python -m webhooks.serve_webhook_agent` in another terminal.
@@ -86,8 +87,10 @@ start the codelab content.
    after the workflow resumes.
 
 7. Now run `python -m webhooks.send_webhook_payload` from the top-level
-   directory and keep an eye on the "wait_for_webhook_demo" execution from step 2. If everything is configured correctly, you will receive a `200` status
-   response from the `send_webhook_payload` script, your webhook will show a
+   directory and keep an eye on the "wait_for_webhook_demo" execution from
+   step 2. If everything is configured correctly, you will receive a `200`
+   status response from the `send_webhook_payload` script, your webhook will
+   show a
    successful execution in the Orkes Conductor UI, and there will now be some
    output in the `invoke_agent` task. After the workflow completes, stop
    the agent tool worker process with Ctrl+C.
@@ -128,10 +131,11 @@ There are a wide variety of databases that you can use in projects, but for the
 sake of simplicity in this codelab we're going to use a local
 [sqlite3 database](https://docs.python.org/3/library/sqlite3.html) since this
 comes built-in with Python 3. To create a new database called
-"webhook_codelab_storage", run `python3 utils/create_sqlite_db.py`. Be sure to
-inspect this file to understand the schema of the "emails" table.
+"webhook_codelab_storage", run `python -m webhooks.utils.create_sqlite_db` from
+the top-level directory. Be sure to inspect this file to understand the schema
+of the "emails" table.
 
-To achieve this, update `utils/workers.py` so that each invocation of the
+To write our data to disk, update `utils/workers.py` so that each invocation of the
 `send_email` worker returns the relevant information about its sent email. In
 `deploy_wait_for_webhook_workflow.py`, retrieve the outputs from all completed
 `send_email` task executions and insert one row per output into
