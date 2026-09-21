@@ -14,7 +14,7 @@ def main():
     # Use a cursor to create a new table
     c = conn.cursor()
     c.execute("""
-        CREATE TABLE emails (
+        CREATE TABLE IF NOT EXISTS emails (
             id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
             sent_time INTEGER NOT NULL,
             subject TEXT NOT NULL,

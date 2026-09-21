@@ -2,7 +2,19 @@
 
 Experimental directory for agentic processes that take a long time (eg: on the order of days, at minimum) to execute.
 
-Be sure to [create a virtual environment](https://docs.python.org/3/library/venv.html), activate it, then `pip install -r requirements.txt` to install important dependencies before trying any of these codelabs!
+## Setup
+
+These codelabs require Python 3.13 or newer. Be sure to [create a virtual environment](https://docs.python.org/3/library/venv.html), activate it, then `pip install -r requirements.txt` to install important dependencies before trying any of these codelabs!
+
+The Conductor SDK reads your server URL and credentials from environment variables. [Create an application access key](https://orkes.io/content/access-control-and-security/applications) in the Orkes Conductor UI under Access Control > Applications, then export the following before running any script:
+
+```bash
+export CONDUCTOR_SERVER_URL=https://developer.orkescloud.com/api
+export CONDUCTOR_AUTH_KEY=your_key_id
+export CONDUCTOR_AUTH_SECRET=your_key_secret
+```
+
+Replace the server URL with your own cluster's URL if you are not using the free developer edition.
 
 ## Webhooks
 
