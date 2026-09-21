@@ -14,7 +14,11 @@ DATABASE_PATH = Path(__file__).with_name("webhook_codelab_storage.db")
 def _open_read_only_database(
     database_path: Path = DATABASE_PATH,
 ) -> Generator[sqlite3.Connection]:
-    """Helper function that opens a read-only connection to a specified database."""
+    """Helper function that opens a read-only connection to a specified database.
+
+    Checking the path first prevents ``sqlite3.connect`` from silently creating
+    an empty database when the codelab database has not been initialized.
+    """
     if not database_path.is_file():
         raise FileNotFoundError(
             f"Database not found at {database_path}. Run create_sqlite_db.py first."
@@ -34,11 +38,7 @@ def fetch_emails(
     database_path: Path = DATABASE_PATH,
     recipient: str | None = None,
 ) -> list[sqlite3.Row]:
-    """Return stored emails in insertion order, optionally for one recipient.
-
-    Checking the path first prevents ``sqlite3.connect`` from silently creating
-    an empty database when the codelab database has not been initialized.
-    """
+    """Return stored emails in insertion order, optionally for one recipient."""
     query = """
         SELECT *
         FROM emails

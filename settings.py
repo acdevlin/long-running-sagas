@@ -1,10 +1,11 @@
 """Shared settings for all codelabs.
 
-Set `CONDUCTOR_AGENT_LLM_MODEL` as an environment variable to override the
-default model used by all child modules, for example:
+Set `CONDUCTOR_AGENT_LLM_MODEL` or `CONDUCTOR_INTEGRATION_NAME` as environment
+variables to override the defaults used by all child modules, for example:
 
     export CONDUCTOR_AGENT_LLM_MODEL=anthropic/claude-sonnet-4-6
     export CONDUCTOR_AGENT_LLM_MODEL=google_gemini/gemini-2.0-flash
+    export CONDUCTOR_INTEGRATION_NAME=my_anthropic_integration
 """
 
 import os
@@ -18,7 +19,6 @@ class Settings:
         "your_integration_name_here"  # Replace with the name of your preferred Orkes integration.
     )
     webhook_id: str = "your_webhook_id_here"  # Replace with your own webhook ID.
-    webhook_endpoint_url: str = f"https://developer.orkescloud.com/webhook/{webhook_id}"
     source_header: str = (
         "your_source_header_here"  # Replace with your own source header.
     )
@@ -28,17 +28,19 @@ class Settings:
     # recipient to identify from the stored email activity.
     user_id: str = "user_12345"
 
+    @property
+    def webhook_endpoint_url(self) -> str:
+        """Webhook endpoint derived from the current ``webhook_id``."""
+        return f"https://developer.orkescloud.com/webhook/{self.webhook_id}"
+
     @classmethod
-    def from_env(self) -> "Settings":
-        return self(
-            llm_model=(os.environ.get("CONDUCTOR_AGENT_LLM_MODEL") or self.llm_model),
+    def from_env(cls) -> "Settings":
+        """Build settings from the defaults above, applying any env overrides."""
+        return cls(
+            llm_model=(os.environ.get("CONDUCTOR_AGENT_LLM_MODEL") or cls.llm_model),
             integration_name=(
-                os.environ.get("CONDUCTOR_INTEGRATION_NAME") or self.integration_name
+                os.environ.get("CONDUCTOR_INTEGRATION_NAME") or cls.integration_name
             ),
-            webhook_id=self.webhook_id,
-            webhook_endpoint_url=self.webhook_endpoint_url,
-            source_header=self.source_header,
-            user_id=self.user_id,
         )
 
 

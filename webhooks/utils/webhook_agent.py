@@ -15,6 +15,12 @@ from settings import settings
 # 2) get_recipient_email_history: return one recipient's email records.
 # Exercise 3: Convert the sqlite3.Row results from the query helpers to plain
 # dictionaries before returning them from either tool.
+
+if "/" not in settings.llm_model:
+    raise ValueError(
+        "settings.llm_model must use the 'provider/model' format, for example "
+        f"'openai/gpt-5-nano'; got {settings.llm_model!r}."
+    )
 _, model = settings.llm_model.split("/", 1)
 
 webhook_agent = Agent(
