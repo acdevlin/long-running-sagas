@@ -16,11 +16,9 @@ from dataclasses import dataclass
 class Settings:
     llm_model: str = "openai/gpt-5-nano"  # Replace with your preferred LLM model.
     integration_name: str = (
-        "OpenAi_Key"  # Replace with the name of your preferred Orkes integration.
+        "your_integration_name_here"  # Replace with the name of your preferred Orkes integration.
     )
-    webhook_id: str = (
-        "r8ai01be9743-ac95-11f1-9216-4224b94c0a5f"  # Replace with your own webhook ID.
-    )
+    webhook_id: str = "your_webhook_id_here"  # Replace with your own webhook ID.
     source_header: str = (
         "wait-for-webhook-demo-value"  # Replace with the value of your own "source" header.
     )
