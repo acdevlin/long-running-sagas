@@ -11,34 +11,52 @@ database, and pauses until an external webhook resumes the workflow. A
 multi-turn agent will then analyze the stored email activity and produce a
 concise digest.
 
+## Choose a Language
+
+This codelab is available in the following languages. Each version has the
+same exercises, and its README explains how to set it up, how to run each step,
+and where to find each part of the code:
+
+- [Python](python/README.md)
+
+Every language version provides the same five steps, which this README refers
+to by name:
+
+| Step | What it does |
+| --- | --- |
+| **create-db** | Creates the local database used from Exercise 1 onward |
+| **deploy** | Registers the agent and workflow, starts an execution, and exits once it reaches the `WAIT_FOR_WEBHOOK` task |
+| **serve-agent** | Runs the agent's local tool workers until you stop it |
+| **send-webhook** | Sends the webhook payload that resumes the workflow |
+| **query-db** | Prints the emails stored in the local database |
+
 ## Preparation
 
-Complete the [Setup section of the top-level README](../README.md#setup) first
-so the Conductor SDK can authenticate with your account. You will then need to
-update the contents of `../settings.py` and confirm the three Python scripts
-included in this directory execute correctly before you can start the codelab
-content.
+Complete the [Setup section of the top-level README](../README.md#setup) and
+the setup steps for your chosen language first so the Conductor SDK can
+authenticate with your account. You will then need to add a few more values to
+`.env` and confirm that the **deploy**, **serve-agent** and **send-webhook**
+steps run correctly before you can start the codelab content.
 
 <details>
 
 <summary>Detailed instructions contained here</summary>
 
-1. Review all configuration variables in `../settings.py` that have a comment
-   beginning with "Replace" next to them. These need to be updated for your own
-   account details.
+1. Open the `.env` file you created at the top level of this repository. The
+   values in its "Agent LLM" and "Webhooks codelab" sections need to be updated
+   for your own account details.
 
 2. Make sure you have at least one
    [Integration added to your Orkes account](https://developer.orkescloud.com/integrations?view=connections-and-resources),
-   then set `integration_name` to the name of that integration and `llm_model`
-   to the specific model it uses. Now run
-   `python -m webhooks.deploy_wait_for_webhook_workflow` from the top-level
-   directory for all codelabs. This will deploy and run a workflow called
+   then set `CONDUCTOR_INTEGRATION_NAME` to the name of that integration and
+   `CONDUCTOR_AGENT_LLM_MODEL` to the specific model it uses. Now run the
+   **deploy** step. This will deploy and run a workflow called
    "wait_for_webhook_demo" to your Orkes account that looks like this:
 
     <p align="center">
       <img
         src="images/wait_for_webhook_demo_workflow.png"
-        alt="After running deploy_wait_for_webhook_demo_workflow.py, you should see a workflow similar to this in your Executions workflow tab. It will pause at the wait_for_webhook_ref task by design."
+        alt="After running the deploy step, you should see a workflow similar to this in your Executions workflow tab. It will pause at the wait_for_webhook_ref task by design."
         height="300"
       >
     </p>
@@ -74,23 +92,22 @@ content.
       >
     </p>
 
-5. Before running the send_webhook_payload script, we need to update
-   `settings.py` again with the details of our new webhook. Set `webhook_id` to
-   the ID of your new webhook which can be found
+5. Before running the **send-webhook** step, we need to update `.env` again
+   with the details of our new webhook. Set `WEBHOOK_ID` to the ID of your new
+   webhook which can be found
    [in the configure-webhooks page of Orkes Conductor](https://developer.orkescloud.com/configure-webhooks).
-   Set `source_header` to the value of the "source" header you entered in your
-   webhook; I suggest `wait-for-webhook-demo-value` as an example.
+   Set `WEBHOOK_SOURCE_HEADER` to the value of the "source" header you entered
+   in your webhook; I suggest `wait-for-webhook-demo-value` as an example.
 
 6. After the workflow reaches `wait_for_webhook_ref` and stores its email
-   records, run `python -m webhooks.serve_webhook_agent` in another terminal.
-   Leave this process running so it can serve the agent's local database tools
-   after the workflow resumes.
+   records, run the **serve-agent** step in another terminal. Leave this
+   process running so it can serve the agent's local database tools after the
+   workflow resumes.
 
-7. Now run `python -m webhooks.send_webhook_payload` from the top-level
-   directory and keep an eye on the "wait_for_webhook_demo" execution from
-   step 2. If everything is configured correctly, you will receive a `200`
-   status response from the `send_webhook_payload` script, your webhook will
-   show a
+7. Now run the **send-webhook** step and keep an eye on the
+   "wait_for_webhook_demo" execution from step 2. If everything is configured
+   correctly, you will receive a `200` status response from the
+   **send-webhook** step, your webhook will show a
    successful execution in the Orkes Conductor UI, and there will now be some
    output in the `invoke_agent` task. After the workflow completes, stop
    the agent tool worker process with Ctrl+C.
@@ -129,24 +146,24 @@ our saga.
 
 There are a wide variety of databases that you can use in projects, but for the
 sake of simplicity in this codelab we're going to use a local
-[sqlite3 database](https://docs.python.org/3/library/sqlite3.html) since this
-comes built-in with Python 3. To create a new database called
-"webhook_codelab_storage", run `python -m webhooks.utils.create_sqlite_db` from
-the top-level directory. Be sure to inspect this file to understand the schema
-of the "emails" table.
+[SQLite database](https://sqlite.org/) since it is stored in a single file and
+needs no database server. To create a new database called
+"webhook_codelab_storage", run the **create-db** step. Be sure to inspect
+[shared/schema.sql](shared/schema.sql) to understand the schema of the "emails"
+table.
 
-To write our data to disk, update `utils/workers.py` so that each invocation of the
-`send_email` worker returns the relevant information about its sent email. In
-`deploy_wait_for_webhook_workflow.py`, retrieve the outputs from all completed
-`send_email` task executions and insert one row per output into
-`utils/webhook_codelab_storage.db`.
+To write our data to disk, update the `send_email` worker so that each
+invocation returns the relevant information about its sent email. In the
+**deploy** step's code, retrieve the outputs from all completed `send_email`
+task executions and insert one row per output into the
+"webhook_codelab_storage" database.
 
 **Note: Although the starter workflow sends only one email, you will want to
 keep the retrieval and persistence logic collection-based so it continues to
 work in future exercises!**
 
-You can check that your code is writing data to the database correctly by using
-the provided `utils/query_sqlite_db.py` helper file.
+You can check that your code is writing data to the database correctly by
+running the **query-db** step.
 
 ## Exercise 2: "Fan Out" by Scaling Email Inputs
 
@@ -159,9 +176,9 @@ send an email to each user with parallel task executions.
 
 Update the workflow and webhook payload to use a list of `user_ids` instead of a
 single `user_id`, then resolve all email addresses in one worker task. Next, use
-the [`DynamicForkTask`](https://orkes.io/content/reference-docs/operators/dynamic-fork)
+a [`DYNAMIC_FORK` task](https://orkes.io/content/reference-docs/operators/dynamic-fork)
 to create one uniquely referenced `send_email` task per recipient email
-address, followed by a `JoinTask` before the existing `WAIT_FOR_WEBHOOK` task.
+address, followed by a `JOIN` task before the existing `WAIT_FOR_WEBHOOK` task.
 Your code from the Exercise 1 solution should store one database row for every
 completed email task.
 
@@ -178,16 +195,17 @@ In this exercise, give the `webhook_customer_service` agent two new tools:
 2. `get_recipient_email_history`, which returns the detailed records for one
    recipient.
 
-Implement both functions as read-only tools using the SDK's `@tool` decorator,
-then add them to the agent's tool list. Have the agent first review the summary,
-identify the recipient with the greatest number of stored emails, retrieve that
-recipient's history, and then write a concise activity digest.
+Implement both functions as read-only agent tools (your language's README
+explains how its SDK declares a tool), then add them to the agent's tool list.
+Have the agent first review the summary, identify the recipient with the
+greatest number of stored emails, retrieve that recipient's history, and then
+write a concise activity digest.
 
 You will also need to update the webhook's `agent_input` to request this
-analysis. After the workflow reaches `WAIT_FOR_WEBHOOK` and the launcher exits,
-run `python -m webhooks.serve_webhook_agent` in another terminal. Keep this
-separate process running while you send the webhook so the resumed workflow can
-execute the agent's local database tools.
+analysis. After the workflow reaches `WAIT_FOR_WEBHOOK` and the **deploy** step
+exits, run the **serve-agent** step in another terminal. Keep this separate
+process running while you send the webhook so the resumed workflow can execute
+the agent's local database tools.
 
 As part of your verification, confirm that the Conductor execution contains two
 dependent tool calls followed by the final digest.
@@ -198,7 +216,7 @@ By completing this codelab, you built a durable, event-driven email workflow
 that:
 
 - Resolves multiple user IDs in one `get_user_emails` task, then uses a
-  `DynamicForkTask` and `JoinTask` to send the emails in parallel.
+  `DYNAMIC_FORK` and `JOIN` to send the emails in parallel.
 - Collects every completed `send_email` result and stores the records in a local
   database while the workflow is suspended.
 - Uses `WAIT_FOR_WEBHOOK` to pause without consuming worker resources, then

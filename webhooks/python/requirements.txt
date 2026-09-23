@@ -5,4 +5,5 @@
 # the optional 'conductor-python[agents]' extra (which pulls in LangChain,
 # LangGraph, the OpenAI and Anthropic SDKs, and Google ADK) is not required.
 conductor-python==2.0.0
+python-dotenv==1.2.3
 requests==2.34.2
