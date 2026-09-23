@@ -25,9 +25,9 @@ from conductor.ai.agents import AgentRuntime
 
 from settings import settings
 
-from .utils.agent_task import AgentTask
-from .utils.webhook_agent import webhook_agent
-from .utils.workers import (
+from utils.agent_task import AgentTask
+from utils.webhook_agent import webhook_agent
+from utils.workers import (
     DYNAMIC_TASKS_INPUTS_PARAM,
     DYNAMIC_TASKS_PARAM,
     SEND_EMAIL_TASK_NAME,
@@ -252,7 +252,7 @@ def main() -> None:
         print(f"{WAIT_TASK_REF} is ready")
         print(
             "Before sending the webhook, start the agent tool workers with "
-            "`python -m webhooks.serve_webhook_agent`."
+            "`python serve_webhook_agent.py`."
         )
         print(f"Webhook URL: {settings.webhook_endpoint_url}")
     finally:

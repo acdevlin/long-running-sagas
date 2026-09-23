@@ -4,7 +4,7 @@
 from conductor.ai.agents import AgentRuntime
 from conductor.client.configuration.configuration import Configuration
 
-from .utils.webhook_agent import webhook_agent
+from utils.webhook_agent import webhook_agent
 
 
 def main() -> None:

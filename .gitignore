@@ -182,3 +182,9 @@ cython_debug/
 
 # Local database files
 *.db
+
+# VScode config
+.vscode
+
+# Mac specific file
+.DS_Store
