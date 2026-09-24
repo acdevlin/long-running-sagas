@@ -28,7 +28,14 @@ public static class DeployWaitForWebhookWorkflow
     private const int WorkflowVersion = 1;
     private const string WaitTaskRef = "wait_for_webhook_ref";
 
-    private static readonly string[] EmailOutputFields = ["sent_time", "subject", "recipients"];
+    // The type each send_email output field must have to fit the emails table,
+    // once the SDK has read it from JSON (which gives whole numbers as long).
+    private static readonly (string Name, Type Type)[] EmailOutputFields =
+    [
+        ("sent_time", typeof(long)),
+        ("subject", typeof(string)),
+        ("recipients", typeof(string)),
+    ];
 
     private const int WorkflowTimeoutSeconds = 7 * 24 * 60 * 60;
     private static readonly TimeSpan ReadinessTimeout = TimeSpan.FromSeconds(60);
@@ -155,11 +162,16 @@ public static class DeployWaitForWebhookWorkflow
                 ?? throw new InvalidOperationException(
                     $"Completed task {task.ReferenceTaskName} has invalid output");
 
-            var missingFields = EmailOutputFields.Where(field => !output.ContainsKey(field)).ToList();
-            if (missingFields.Count > 0)
+            // A null value has no type, so this also rejects missing (null) values.
+            var invalidFields = EmailOutputFields
+                .Where(field => output.GetValueOrDefault(field.Name)?.GetType() != field.Type)
+                .Select(field => field.Name)
+                .ToList();
+            if (invalidFields.Count > 0)
             {
                 throw new InvalidOperationException(
-                    $"Completed task {task.ReferenceTaskName} is missing: {string.Join(", ", missingFields)}");
+                    $"Completed task {task.ReferenceTaskName} has missing or invalid fields: " +
+                    string.Join(", ", invalidFields));
             }
 
             emailOutputs.Add(output);
@@ -171,25 +183,7 @@ public static class DeployWaitForWebhookWorkflow
     /// <summary>Insert all completed email outputs in one database transaction.</summary>
     private static async Task<int> StoreEmailOutputsAsync(List<Dictionary<string, object>> emailOutputs)
     {
-        if (emailOutputs.Count == 0)
-        {
-            throw new ArgumentException("At least one email output is required", nameof(emailOutputs));
-        }
-
-        if (!File.Exists(QuerySqliteDb.DatabasePath))
-        {
-            throw new FileNotFoundException(
-                $"Database not found at {QuerySqliteDb.DatabasePath}. Run the create-db step first.");
-        }
-
-        // ReadWrite mode, unlike the default, never creates a new empty database.
-        var connectionString = new SqliteConnectionStringBuilder
-        {
-            DataSource = QuerySqliteDb.DatabasePath,
-            Mode = SqliteOpenMode.ReadWrite,
-        }.ToString();
-        await using var connection = new SqliteConnection(connectionString);
-        await connection.OpenAsync();
+        await using var connection = await QuerySqliteDb.OpenDatabaseAsync(writable: true);
 
         // Use a single DB transaction to avoid partial insert failures.
         await using var transaction = connection.BeginTransaction();
@@ -252,6 +246,13 @@ public static class DeployWaitForWebhookWorkflow
                 "Before sending the webhook, start the agent tool workers with " +
                 "`dotnet run -- serve-agent`.");
             Console.WriteLine($"Webhook URL: {Settings.Current.WebhookEndpointUrl}");
+        }
+        catch (Exception error) when (error is FileNotFoundException or InvalidOperationException
+            or TimeoutException or SqliteException)
+        {
+            // Report expected failures in one line, as the query-db step does.
+            Console.Error.WriteLine($"Deploy step failed: {error.Message}");
+            Environment.ExitCode = 1;
         }
         finally
         {

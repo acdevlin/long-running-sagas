@@ -3,7 +3,7 @@ using Microsoft.Data.Sqlite;
 
 namespace WebhooksCodelab.Utils;
 
-/// <summary>Prints emails stored by the DB for the webhook codelab.</summary>
+/// <summary>Opens the DB for the webhook codelab and prints the emails stored in it.</summary>
 public static class QuerySqliteDb
 {
     /// <summary>The local database file, created by the create-db step.</summary>
@@ -14,7 +14,7 @@ public static class QuerySqliteDb
     /// <summary>Return stored emails in insertion order, optionally for one recipient.</summary>
     public static async Task<List<Dictionary<string, object?>>> FetchEmailsAsync(string? recipient = null)
     {
-        await using var connection = await OpenReadOnlyDatabaseAsync();
+        await using var connection = await OpenDatabaseAsync();
         await using var command = connection.CreateCommand();
 
         command.CommandText = """
@@ -36,7 +36,7 @@ public static class QuerySqliteDb
     /// <summary>Return one email-count row per recipient, ordered by activity.</summary>
     public static async Task<List<Dictionary<string, object?>>> FetchEmailActivityAsync()
     {
-        await using var connection = await OpenReadOnlyDatabaseAsync();
+        await using var connection = await OpenDatabaseAsync();
         await using var command = connection.CreateCommand();
 
         command.CommandText = """
@@ -99,12 +99,14 @@ public static class QuerySqliteDb
     }
 
     /// <summary>
-    /// Helper function that opens a read-only connection to the codelab database.
+    /// Helper function that opens a connection to the codelab database.
     ///
-    /// Checking the path first gives a clear error when the database has not
-    /// been created yet, instead of a generic SQLite "unable to open" error.
+    /// The connection is read-only unless <paramref name="writable"/> is true.
+    /// Neither mode creates a missing database, and checking the path first
+    /// gives a clear error when the database has not been created yet, instead
+    /// of a generic SQLite "unable to open" error.
     /// </summary>
-    private static async Task<SqliteConnection> OpenReadOnlyDatabaseAsync()
+    public static async Task<SqliteConnection> OpenDatabaseAsync(bool writable = false)
     {
         if (!File.Exists(DatabasePath))
         {
@@ -112,12 +114,12 @@ public static class QuerySqliteDb
                 $"Database not found at {DatabasePath}. Run the create-db step first.");
         }
 
-        // Read-only mode prevents this query helper and the agent tools that use
-        // it from modifying the codelab database.
+        // Read-only mode prevents the query helpers and the agent tools that use
+        // them from modifying the codelab database.
         var connectionString = new SqliteConnectionStringBuilder
         {
             DataSource = DatabasePath,
-            Mode = SqliteOpenMode.ReadOnly,
+            Mode = writable ? SqliteOpenMode.ReadWrite : SqliteOpenMode.ReadOnly,
         }.ToString();
         var connection = new SqliteConnection(connectionString);
         await connection.OpenAsync();

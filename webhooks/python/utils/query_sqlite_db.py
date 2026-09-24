@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prints emails stored by the DB for the webhook codelab."""
+"""Opens the DB for the webhook codelab and prints the emails stored in it."""
 
 import sqlite3
 import sys
@@ -11,22 +11,27 @@ DATABASE_PATH = Path(__file__).with_name("webhook_codelab_storage.db")
 
 
 @contextmanager
-def _open_read_only_database(
+def open_database(
     database_path: Path = DATABASE_PATH,
+    *,
+    writable: bool = False,
 ) -> Generator[sqlite3.Connection]:
-    """Helper function that opens a read-only connection to a specified database.
+    """Helper function that opens a connection to a specified database.
 
-    Checking the path first prevents ``sqlite3.connect`` from silently creating
-    an empty database when the codelab database has not been initialized.
+    The connection is read-only unless ``writable`` is true. Neither mode
+    creates a missing database, and checking the path first gives a clear error
+    when the codelab database has not been initialized.
     """
     if not database_path.is_file():
         raise FileNotFoundError(
-            f"Database not found at {database_path}. Run create_sqlite_db.py first."
+            f"Database not found at {database_path}. Run the create-db step "
+            "(python -m utils.create_sqlite_db) first."
         )
 
-    # URI mode prevents this query helper and the agent tools that use it from
-    # modifying the codelab database.
-    database_uri = f"{database_path.resolve().as_uri()}?mode=ro"
+    # Read-only mode prevents the query helpers and the agent tools that use
+    # them from modifying the codelab database.
+    mode = "rw" if writable else "ro"
+    database_uri = f"{database_path.resolve().as_uri()}?mode={mode}"
     with closing(sqlite3.connect(database_uri, uri=True)) as connection:
         connection.row_factory = sqlite3.Row
         yield connection
@@ -47,7 +52,7 @@ def fetch_emails(
         parameters = (recipient,)
     query += "ORDER BY id"
 
-    with _open_read_only_database(database_path) as connection:
+    with open_database(database_path) as connection:
         return connection.execute(query, parameters).fetchall()
 
 
@@ -64,7 +69,7 @@ def fetch_email_activity(
         ORDER BY email_count DESC, recipient
         """
 
-    with _open_read_only_database(database_path) as connection:
+    with open_database(database_path) as connection:
         return connection.execute(query).fetchall()
 
 

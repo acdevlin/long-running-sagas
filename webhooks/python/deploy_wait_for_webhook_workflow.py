@@ -8,8 +8,8 @@ keeps the workflow suspended until ``send_webhook_payload.py`` sends a callback;
 """
 
 import sqlite3
+import sys
 import time
-from pathlib import Path
 from typing import Any
 
 from conductor.client.automator.task_handler import TaskHandler
@@ -26,6 +26,7 @@ from conductor.ai.agents import AgentRuntime
 from settings import settings
 
 from utils.agent_task import AgentTask
+from utils.query_sqlite_db import DATABASE_PATH, open_database
 from utils.webhook_agent import webhook_agent
 from utils.workers import (
     DYNAMIC_TASKS_INPUTS_PARAM,
@@ -38,8 +39,8 @@ WORKFLOW_NAME = f"wait_for_webhook_demo_{settings.language}"
 WORKFLOW_VERSION = 1
 WAIT_TASK_REF = "wait_for_webhook_ref"
 
-DATABASE_PATH = Path(__file__).resolve().parent / "utils" / "webhook_codelab_storage.db"
-EMAIL_OUTPUT_FIELDS = ("sent_time", "subject", "recipients")
+# The type each send_email output field must have to fit the emails table.
+EMAIL_OUTPUT_FIELDS = {"sent_time": int, "subject": str, "recipients": str}
 
 WORKFLOW_TIMEOUT_SECONDS = 7 * 24 * 60 * 60
 READINESS_TIMEOUT_SECONDS = 60
@@ -184,11 +185,17 @@ def get_completed_email_outputs(
                 f"Completed task {task.reference_task_name} has invalid output"
             )
 
-        missing_fields = set(EMAIL_OUTPUT_FIELDS) - output.keys()
-        if missing_fields:
-            fields = ", ".join(sorted(missing_fields))
+        # An exact type check, so that a missing (None) or bool value is rejected.
+        invalid_fields = [
+            field
+            for field, field_type in EMAIL_OUTPUT_FIELDS.items()
+            if type(output.get(field)) is not field_type
+        ]
+        if invalid_fields:
+            fields = ", ".join(invalid_fields)
             raise RuntimeError(
-                f"Completed task {task.reference_task_name} is missing: {fields}"
+                f"Completed task {task.reference_task_name} has missing or invalid "
+                f"fields: {fields}"
             )
 
         email_outputs.append(output)
@@ -198,38 +205,30 @@ def get_completed_email_outputs(
 
 def store_email_outputs(email_outputs: list[dict[str, Any]]) -> int:
     """Insert all completed email outputs in one database transaction."""
-    if not email_outputs:
-        raise ValueError("At least one email output is required")
-
-    if not DATABASE_PATH.is_file():
-        raise FileNotFoundError(
-            f"Database not found at {DATABASE_PATH}. "
-            "Run webhooks/utils/create_sqlite_db.py first."
-        )
-
     email_rows = [
         tuple(email_output[field] for field in EMAIL_OUTPUT_FIELDS)
         for email_output in email_outputs
     ]
 
-    # Use a single DB transaction to avoid partial insert failures.
-    with sqlite3.connect(DATABASE_PATH) as connection:
-        connection.executemany(
-            """
-            INSERT INTO emails (
-                sent_time,
-                subject,
-                recipients
+    with open_database(writable=True) as connection:
+        # Use a single DB transaction to avoid partial insert failures.
+        with connection:
+            connection.executemany(
+                """
+                INSERT INTO emails (
+                    sent_time,
+                    subject,
+                    recipients
+                )
+                VALUES (?, ?, ?)
+                """,
+                email_rows,
             )
-            VALUES (?, ?, ?)
-            """,
-            email_rows,
-        )
 
     return len(email_rows)
 
 
-def main() -> None:
+def main() -> int:
     config = Configuration()
     task_handler = TaskHandler(
         workers=[],
@@ -263,9 +262,15 @@ def main() -> None:
             "`python serve_webhook_agent.py`."
         )
         print(f"Webhook URL: {settings.webhook_endpoint_url}")
+    except (FileNotFoundError, RuntimeError, TimeoutError, sqlite3.Error) as error:
+        # Report expected failures in one line, as the query-db step does.
+        print(f"Deploy step failed: {error}", file=sys.stderr)
+        return 1
     finally:
         task_handler.stop_processes()
 
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
