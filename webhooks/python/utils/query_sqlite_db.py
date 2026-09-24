@@ -21,7 +21,8 @@ def _open_read_only_database(
     """
     if not database_path.is_file():
         raise FileNotFoundError(
-            f"Database not found at {database_path}. Run create_sqlite_db.py first."
+            f"Database not found at {database_path}. Run the create-db step "
+            "(python -m utils.create_sqlite_db) first."
         )
 
     # URI mode prevents this query helper and the agent tools that use it from
