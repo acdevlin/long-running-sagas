@@ -22,6 +22,9 @@ def main():
         "agent_input": (
             "Introduce yourself, then inform the user that their email has been sent."
         ),
+        # Every language version shares one webhook; this key selects this
+        # language's workflow (see the matches in the deploy step).
+        "language": settings.language,
     }
 
     response = requests.post(

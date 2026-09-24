@@ -30,6 +30,17 @@ to by name:
 | **send-webhook** | Sends the webhook payload that resumes the workflow |
 | **query-db** | Prints the emails stored in the local database |
 
+Each language version registers its own workflow and agent, named after the
+language (for example `wait_for_webhook_demo_python` and
+`webhook_customer_service_python`), so you can tell their runs apart in the
+Orkes Conductor UI. All language versions share one webhook, and each
+language's **send-webhook** step only resumes that language's workflow.
+
+The language versions do share task names such as `send_email`, and Conductor
+gives each task to whichever worker asks for it first. If you work through more
+than one language, run only one language's steps at a time, and stop any
+**serve-agent** process from another language before you start.
+
 ## Preparation
 
 Complete the [Setup section of the top-level README](../README.md#setup) and
@@ -42,6 +53,12 @@ steps run correctly before you can start the codelab content.
 
 <summary>Detailed instructions contained here</summary>
 
+The screenshots in these steps come from the Python version of the codelab, so
+they show names such as `wait_for_webhook_demo_python` and
+`webhook_customer_service_python`. The steps are the same for every language
+version; your workflow and agent names end with your own language's name
+instead, as listed in your language's README.
+
 1. Open the `.env` file you created at the top level of this repository. The
    values in its "Agent LLM" and "Webhooks codelab" sections need to be updated
    for your own account details.
@@ -50,8 +67,9 @@ steps run correctly before you can start the codelab content.
    [Integration added to your Orkes account](https://developer.orkescloud.com/integrations?view=connections-and-resources),
    then set `CONDUCTOR_INTEGRATION_NAME` to the name of that integration and
    `CONDUCTOR_AGENT_LLM_MODEL` to the specific model it uses. Now run the
-   **deploy** step. This will deploy and run a workflow called
-   "wait_for_webhook_demo" to your Orkes account that looks like this:
+   **deploy** step. This will deploy and run a workflow named after your
+   language, such as "wait_for_webhook_demo_python", to your Orkes account that
+   looks like this:
 
     <p align="center">
       <img
@@ -65,8 +83,12 @@ steps run correctly before you can start the codelab content.
    [webhook integration guide](https://orkes.io/content/developer-guides/webhook-integration)
    to create a new webhook for your account. **Note that in the free developer
    version of Orkes Conductor you are only allowed to have one webhook defined.**
-   Click on the Webhook tab in the Orkes Conductor UI, then click the "New
-   webhook" button in the top-right hand corner:
+   If you already created the webhook for another language version of this
+   codelab, don't create a second one: open it from the Webhook tab, add your
+   language's workflow from step 2 to its "Workflows to receive webhook event"
+   dropdown, click "Save", and continue from step 5. Otherwise, click on the
+   Webhook tab in the Orkes Conductor UI, then click the "New webhook" button in
+   the top-right hand corner:
 
     <p align="center">
       <img
@@ -77,8 +99,10 @@ steps run correctly before you can start the codelab content.
     </p>
 
 4. Feel free to name your new webhook whatever you like. Note that it _must_
-   have the `wait_for_webhook_demo` workflow selected in the "Workflows to
-   receive webhook event" dropdown and the "Source platform" set to "Custom".
+   have your language's workflow from step 2, such as
+   `wait_for_webhook_demo_python`, selected in the "Workflows to receive webhook
+   event" dropdown (select one for each language you plan to use), and the
+   "Source platform" set to "Custom".
    Additionally, you _must_ add a header with a key entitled "source" and a
    descriptive value such as `wait-for-webhook-demo-value`; we'll be using it
    later for the webhook payload. It should look something like this before you
@@ -99,13 +123,13 @@ steps run correctly before you can start the codelab content.
    Set `WEBHOOK_SOURCE_HEADER` to the value of the "source" header you entered
    in your webhook; I suggest `wait-for-webhook-demo-value` as an example.
 
-6. After the workflow reaches `wait_for_webhook_ref` and stores its email
-   records, run the **serve-agent** step in another terminal. Leave this
+6. After the **deploy** step reports that `wait_for_webhook_ref` is ready, run
+   the **serve-agent** step in another terminal. Leave this
    process running so it can serve the agent's local database tools after the
    workflow resumes.
 
-7. Now run the **send-webhook** step and keep an eye on the
-   "wait_for_webhook_demo" execution from step 2. If everything is configured
+7. Now run the **send-webhook** step and keep an eye on the workflow
+   execution from step 2. If everything is configured
    correctly, you will receive a `200` status response from the
    **send-webhook** step, your webhook will show a
    successful execution in the Orkes Conductor UI, and there will now be some
@@ -123,7 +147,7 @@ steps run correctly before you can start the codelab content.
     <p align="center">
       <img
         src="images/successful_workflow_run.png"
-        alt="A successful run of the wait_for_webhook_demo workflow in the Orkes Conductor UI, showing output in the invoke_agent task."
+        alt="A successful run of the codelab's workflow in the Orkes Conductor UI, showing output in the invoke_agent task."
         height="300"
       >
     </p>
@@ -188,7 +212,8 @@ We have now scaled up the email inputs to our persistent pipeline. Now it's
 time to update the agent downstream from the `WAIT_FOR_WEBHOOK` task, since it
 currently doesn't do anything meaningful with the email data.
 
-In this exercise, give the `webhook_customer_service` agent two new tools:
+In this exercise, give your language's agent, such as
+`webhook_customer_service_python`, two new tools:
 
 1. `summarize_email_activity`, which returns the total number of stored emails
    and the number sent to each recipient.

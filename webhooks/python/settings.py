@@ -32,6 +32,9 @@ class Settings:
     llm_model: str = "openai/gpt-5-nano"
     # Set CONDUCTOR_INTEGRATION_NAME in .env.
     integration_name: str = "your_integration_name_here"
+    # Identifies this language version in its workflow and agent names and in
+    # the webhook payload, so every language version can share one webhook.
+    language: str = "python"
     # Set WEBHOOK_ID in .env.
     webhook_id: str = "your_webhook_id_here"
     # Set WEBHOOK_SOURCE_HEADER in .env.

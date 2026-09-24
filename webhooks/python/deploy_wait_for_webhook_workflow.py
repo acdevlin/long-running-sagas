@@ -24,13 +24,16 @@ from utils.agent_task import AgentTask
 from utils.webhook_agent import webhook_agent
 from utils.workers import get_user_email, send_email
 
-WORKFLOW_NAME = "wait_for_webhook_demo"
+WORKFLOW_NAME = f"wait_for_webhook_demo_{settings.language}"
 WORKFLOW_VERSION = 1
 WAIT_TASK_REF = "wait_for_webhook_ref"
 
 WORKFLOW_TIMEOUT_SECONDS = 7 * 24 * 60 * 60
 READINESS_TIMEOUT_SECONDS = 60
 POLL_INTERVAL_SECONDS = 1
+
+# Shown in the workflow's description in the Orkes Conductor UI.
+CODELAB_LANGUAGE = "Python"
 
 
 def build_workflow(workflow_executor) -> ConductorWorkflow:
@@ -40,7 +43,9 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
         version=WORKFLOW_VERSION,
         executor=workflow_executor,
     )
-    workflow.description = "Durable wait-for-webhook example"
+    workflow.description = (
+        f"Durable wait-for-webhook example (registered from {CODELAB_LANGUAGE})"
+    )
     workflow.timeout_seconds(WORKFLOW_TIMEOUT_SECONDS)
     workflow.timeout_policy(TimeoutPolicy.TIME_OUT_WORKFLOW)
 
@@ -53,7 +58,7 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
     # Exercise 2: Use a DYNAMIC_FORK to send an email to each recipient.
     # Be sure to create a JoinTask to consolidate results after your DynamicForkTask.
     # Also ensure that your task_ref_name values are unique for each sent email, for example by
-    # appending the user_id to the task_ref_name.
+    # appending the user_id's position in the list, since Exercise 3 repeats a user_id.
     send_email_task = send_email(
         task_ref_name="send_email_ref",
         recipients=get_email_task.output("result"),
@@ -64,6 +69,9 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
     webhook_wait = wait_for_webhook(
         task_ref_name=WAIT_TASK_REF,
         matches={
+            # Every language version shares one webhook, so only match payloads
+            # sent by this language's send_webhook_payload.py.
+            "$['language']": settings.language,
             "$['type']": "customer",
             # Exercise 2: Change to 'user_ids'
             # Be sure the payload sent by send_webhook_payload.py matches the key you use here.

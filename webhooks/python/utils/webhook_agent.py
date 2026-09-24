@@ -24,7 +24,7 @@ if "/" not in settings.llm_model:
 _, model = settings.llm_model.split("/", 1)
 
 webhook_agent = Agent(
-    name="webhook_customer_service",
+    name=f"webhook_customer_service_{settings.language}",
     model=f"{settings.integration_name}/{model}",
     # Exercise 3: Tell the agent to call summarize_email_activity first.
     # If the summary is empty, it should return a no-activity digest.
