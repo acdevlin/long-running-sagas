@@ -18,6 +18,9 @@ namespace WebhooksCodelab.Utils;
 [WorkerTask]
 public static class Workers
 {
+    // Shared with the deploy step, which finds the completed sends by this name.
+    public const string SendEmailTaskName = "send_email";
+
     // Exercise 2: Change to "get_user_emails" and take a list of user IDs as input.
     /// <summary>Return the email address associated with a user.</summary>
     [WorkerTask(TaskType = "get_user_email")]
@@ -25,12 +28,15 @@ public static class Workers
         $"{userId}@example.com";
 
     /// <summary>Simulate sending an email.</summary>
-    [WorkerTask(TaskType = "send_email")]
-    public static void SendEmail(string recipients, string subject, string body)
+    [WorkerTask(TaskType = SendEmailTaskName)]
+    public static Dictionary<string, object> SendEmail(string recipients, string subject, string body)
     {
         Console.WriteLine($"Sending email\nTo: {recipients}\nSubject: {subject}\nBody: {body}");
-        // Exercise 1: Return one record from each invocation with the fields required
-        // by the emails table, allowing every completed send_email output to be stored
-        // (change this method's return type to match).
+        return new Dictionary<string, object>
+        {
+            ["sent_time"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            ["subject"] = subject,
+            ["recipients"] = recipients,
+        };
     }
 }

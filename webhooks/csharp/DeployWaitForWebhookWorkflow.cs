@@ -6,6 +6,7 @@ using Conductor.Client.Models;
 using Conductor.Definition;
 using Conductor.Definition.TaskType;
 using Conductor.Executor;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using WebhooksCodelab.Utils;
@@ -17,15 +18,17 @@ namespace WebhooksCodelab;
 /// Register and start a durable webhook-driven workflow.
 ///
 /// The step keeps its local workers running until the workflow reaches the
-/// WAIT_FOR_WEBHOOK task, then exits. Conductor keeps the workflow suspended
-/// until the send-webhook step sends a callback; the serve-agent step runs the
-/// local tools needed after it resumes.
+/// WAIT_FOR_WEBHOOK task, stores the completed email results, then exits.
+/// Conductor keeps the workflow suspended until the send-webhook step sends a
+/// callback; the serve-agent step runs the local tools needed after it resumes.
 /// </summary>
 public static class DeployWaitForWebhookWorkflow
 {
     private static readonly string WorkflowName = $"wait_for_webhook_demo_{Settings.Current.Language}";
     private const int WorkflowVersion = 1;
     private const string WaitTaskRef = "wait_for_webhook_ref";
+
+    private static readonly string[] EmailOutputFields = ["sent_time", "subject", "recipients"];
 
     private const int WorkflowTimeoutSeconds = 7 * 24 * 60 * 60;
     private static readonly TimeSpan ReadinessTimeout = TimeSpan.FromSeconds(60);
@@ -53,7 +56,7 @@ public static class DeployWaitForWebhookWorkflow
         // Also ensure that each sent email's task reference name is unique, for
         // example by appending the user ID's position in the list, since Exercise 3
         // repeats a user ID.
-        var sendEmailTask = new SimpleTask("send_email", "send_email_ref")
+        var sendEmailTask = new SimpleTask(Workers.SendEmailTaskName, "send_email_ref")
             .WithInput("recipients", getEmailTask.Output("result"))
             .WithInput("subject", "Hello from Orkes")
             .WithInput("body", "Test Email");
@@ -102,8 +105,8 @@ public static class DeployWaitForWebhookWorkflow
             version: WorkflowVersion,
             input: new Dictionary<string, object> { ["user_id"] = Settings.Current.UserId }));
 
-    /// <summary>Wait until the execution reaches its WAIT_FOR_WEBHOOK task.</summary>
-    private static async Task WaitUntilWebhookReadyAsync(WorkflowResourceApi workflowClient, string workflowId)
+    /// <summary>Return the execution after it reaches its WAIT_FOR_WEBHOOK task.</summary>
+    private static async Task<Workflow> WaitUntilWebhookReadyAsync(WorkflowResourceApi workflowClient, string workflowId)
     {
         var elapsed = Stopwatch.StartNew();
 
@@ -114,11 +117,7 @@ public static class DeployWaitForWebhookWorkflow
             var waitTask = execution.Tasks?.FirstOrDefault(task => task.ReferenceTaskName == WaitTaskRef);
             if (waitTask?.Status == Conductor.Client.Models.Task.StatusEnum.INPROGRESS)
             {
-                // Exercise 1: Return this execution, including its tasks, so the caller can
-                // retrieve every completed send_email output (change this method to return
-                // Task<Workflow>). Treat the results as a collection even though the starter
-                // workflow sends only one email.
-                return;
+                return execution;
             }
 
             if (execution.Status is Workflow.StatusEnum.FAILED
@@ -133,6 +132,91 @@ public static class DeployWaitForWebhookWorkflow
 
         throw new TimeoutException(
             $"Workflow did not reach {WaitTaskRef} within {ReadinessTimeout.TotalSeconds} seconds");
+    }
+
+    /// <summary>Return valid outputs from every completed send-email task.</summary>
+    private static List<Dictionary<string, object>> GetCompletedEmailOutputs(Workflow execution)
+    {
+        // Task-definition names remain stable while task references may not.
+        var emailTasks = (execution.Tasks ?? [])
+            .Where(task => task.TaskDefName == Workers.SendEmailTaskName
+                && task.Status == Conductor.Client.Models.Task.StatusEnum.COMPLETED)
+            .ToList();
+        if (emailTasks.Count == 0)
+        {
+            throw new InvalidOperationException(
+                $"No completed {Workers.SendEmailTaskName} task outputs were found");
+        }
+
+        var emailOutputs = new List<Dictionary<string, object>>();
+        foreach (var task in emailTasks)
+        {
+            var output = task.OutputData
+                ?? throw new InvalidOperationException(
+                    $"Completed task {task.ReferenceTaskName} has invalid output");
+
+            var missingFields = EmailOutputFields.Where(field => !output.ContainsKey(field)).ToList();
+            if (missingFields.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Completed task {task.ReferenceTaskName} is missing: {string.Join(", ", missingFields)}");
+            }
+
+            emailOutputs.Add(output);
+        }
+
+        return emailOutputs;
+    }
+
+    /// <summary>Insert all completed email outputs in one database transaction.</summary>
+    private static async Task<int> StoreEmailOutputsAsync(List<Dictionary<string, object>> emailOutputs)
+    {
+        if (emailOutputs.Count == 0)
+        {
+            throw new ArgumentException("At least one email output is required", nameof(emailOutputs));
+        }
+
+        if (!File.Exists(QuerySqliteDb.DatabasePath))
+        {
+            throw new FileNotFoundException(
+                $"Database not found at {QuerySqliteDb.DatabasePath}. Run the create-db step first.");
+        }
+
+        // ReadWrite mode, unlike the default, never creates a new empty database.
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = QuerySqliteDb.DatabasePath,
+            Mode = SqliteOpenMode.ReadWrite,
+        }.ToString();
+        await using var connection = new SqliteConnection(connectionString);
+        await connection.OpenAsync();
+
+        // Use a single DB transaction to avoid partial insert failures.
+        await using var transaction = connection.BeginTransaction();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO emails (
+                sent_time,
+                subject,
+                recipients
+            )
+            VALUES ($sent_time, $subject, $recipients)
+            """;
+
+        // Reuse one command for every row, changing only the parameter values.
+        var sentTime = command.Parameters.Add("$sent_time", SqliteType.Integer);
+        var subject = command.Parameters.Add("$subject", SqliteType.Text);
+        var recipients = command.Parameters.Add("$recipients", SqliteType.Text);
+        foreach (var emailOutput in emailOutputs)
+        {
+            sentTime.Value = emailOutput["sent_time"];
+            subject.Value = emailOutput["subject"];
+            recipients.Value = emailOutput["recipients"];
+            await command.ExecuteNonQueryAsync();
+        }
+
+        await transaction.CommitAsync();
+        return emailOutputs.Count;
     }
 
     public static async Task RunAsync()
@@ -158,11 +242,11 @@ public static class DeployWaitForWebhookWorkflow
             var workflowId = StartWorkflow(workflowExecutor);
             Console.WriteLine($"Workflow URL: {Settings.Current.ServerBaseUrl}/execution/{workflowId}");
 
-            await WaitUntilWebhookReadyAsync(configuration.GetClient<WorkflowResourceApi>(), workflowId);
-            // Exercise 1: Retrieve every completed send_email task output and store one
-            // database row per email in QuerySqliteDb.DatabasePath. Do not rely on one
-            // fixed task reference because Exercise 2 will generate multiple send_email
-            // tasks with unique references.
+            var execution = await WaitUntilWebhookReadyAsync(
+                configuration.GetClient<WorkflowResourceApi>(), workflowId);
+            var emailOutputs = GetCompletedEmailOutputs(execution);
+            var storedCount = await StoreEmailOutputsAsync(emailOutputs);
+            Console.WriteLine($"Stored {storedCount} email record(s) in {QuerySqliteDb.DatabasePath}");
             Console.WriteLine($"{WaitTaskRef} is ready");
             Console.WriteLine(
                 "Before sending the webhook, start the agent tool workers with " +
