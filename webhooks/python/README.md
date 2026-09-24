@@ -17,6 +17,9 @@ dependencies.
 `settings.py` loads your settings from the `.env` file at the top level of the
 repository, so there is nothing to configure in this folder.
 
+Then follow the [Preparation steps in the codelab README](../README.md#preparation)
+to configure your Orkes account and webhook.
+
 ## Commands
 
 Run every command from this folder (`webhooks/python`).
@@ -29,6 +32,10 @@ Run every command from this folder (`webhooks/python`).
 | **send-webhook** | `python send_webhook_payload.py` |
 | **query-db** | `python -m utils.query_sqlite_db` |
 
+The **deploy** step registers the workflow as `wait_for_webhook_demo_python`
+and the agent as `webhook_customer_service_python`. Select
+`wait_for_webhook_demo_python` when you set up your webhook.
+
 ## Where to Find Each Part
 
 Comments beginning with `# Exercise N:` mark each place you will change for that
@@ -40,7 +47,7 @@ exercise.
 | Workflow definition, readiness check, and storing email records | `deploy_wait_for_webhook_workflow.py` | 1, 2 |
 | `get_user_email` and `send_email` workers | `utils/workers.py` | 1, 2 |
 | Webhook payload and `agent_input` | `send_webhook_payload.py` | 2, 3 |
-| `webhook_customer_service` agent and its tools | `utils/webhook_agent.py` | 3 |
+| `webhook_customer_service_python` agent and its tools | `utils/webhook_agent.py` | 3 |
 | Read-only database queries | `utils/query_sqlite_db.py` | 3 |
 | Database setup, using [`../shared/schema.sql`](../shared/schema.sql) | `utils/create_sqlite_db.py` | |
 | Local database file, created by **create-db** | `utils/webhook_codelab_storage.db` | |

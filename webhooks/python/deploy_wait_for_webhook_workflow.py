@@ -34,7 +34,7 @@ from utils.workers import (
     get_user_emails,
 )
 
-WORKFLOW_NAME = "wait_for_webhook_demo"
+WORKFLOW_NAME = f"wait_for_webhook_demo_{settings.language}"
 WORKFLOW_VERSION = 1
 WAIT_TASK_REF = "wait_for_webhook_ref"
 
@@ -45,6 +45,9 @@ WORKFLOW_TIMEOUT_SECONDS = 7 * 24 * 60 * 60
 READINESS_TIMEOUT_SECONDS = 60
 POLL_INTERVAL_SECONDS = 1
 
+# Shown in the workflow's description in the Orkes Conductor UI.
+CODELAB_LANGUAGE = "Python"
+
 
 def build_workflow(workflow_executor) -> ConductorWorkflow:
     """Build the workflow definition without registering or starting it."""
@@ -53,7 +56,9 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
         version=WORKFLOW_VERSION,
         executor=workflow_executor,
     )
-    workflow.description = "Durable wait-for-webhook example"
+    workflow.description = (
+        f"Durable wait-for-webhook example (registered from {CODELAB_LANGUAGE})"
+    )
     workflow.timeout_seconds(WORKFLOW_TIMEOUT_SECONDS)
     workflow.timeout_policy(TimeoutPolicy.TIME_OUT_WORKFLOW)
     workflow.input_parameters(["user_ids"])
@@ -92,6 +97,9 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
     webhook_wait = wait_for_webhook(
         task_ref_name=WAIT_TASK_REF,
         matches={
+            # Every language version shares one webhook, so only match payloads
+            # sent by this language's send_webhook_payload.py.
+            "$['language']": settings.language,
             "$['type']": "customer",
             # Assume that we want emails sent to all provided user IDs
             "$['user_ids']": workflow.input("user_ids"),

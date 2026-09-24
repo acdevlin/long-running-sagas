@@ -47,7 +47,7 @@ if "/" not in settings.llm_model:
 _, model = settings.llm_model.split("/", 1)
 
 webhook_agent = Agent(
-    name="webhook_customer_service",
+    name=f"webhook_customer_service_{settings.language}",
     model=f"{settings.integration_name}/{model}",
     instructions=(
         "You are an email activity analyst. First call summarize_email_activity. "

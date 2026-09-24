@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>WebhooksCodelab</RootNamespace>
+  </PropertyGroup>
+
+  <!--
+    The agent in these codelabs runs on the Conductor server through an Orkes
+    integration, so none of the conductor-ai framework bridges (OpenAI, Google
+    ADK, Semantic Kernel) are required.
+  -->
+  <ItemGroup>
+    <PackageReference Include="conductor-ai" Version="3.0.0" />
+    <PackageReference Include="conductor-csharp" Version="3.0.0" />
+    <PackageReference Include="DotNetEnv" Version="3.2.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+  </ItemGroup>
+
+</Project>
