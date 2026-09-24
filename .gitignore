@@ -180,8 +180,11 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
-# Local database files
+# Local database files, and the SQLite journal files that can be left beside them
 *.db
+*.db-journal
+*.db-wal
+*.db-shm
 
 # VScode config
 .vscode
@@ -192,3 +195,10 @@ cython_debug/
 # .NET build output
 bin/
 obj/
+
+# Visual Studio, Rider and ReSharper user files
+.vs/
+.idea/
+*.user
+*.suo
+*.DotSettings.user
