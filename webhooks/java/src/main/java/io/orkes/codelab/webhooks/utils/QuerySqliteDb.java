@@ -32,8 +32,6 @@ public final class QuerySqliteDb {
         return fetchEmails(null);
     }
 
-    // Exercise 3: Use the recipient argument in get_recipient_email_history to
-    // retrieve only the selected recipient's records.
     /**
      * Return stored emails in insertion order, for one recipient unless {@code recipient} is null.
      */
@@ -58,8 +56,6 @@ public final class QuerySqliteDb {
         }
     }
 
-    // Exercise 3: Use these rows in summarize_email_activity to total the emails and return
-    // each recipient's activity. Each row's email_count is an Integer.
     /** Return one email-count row per recipient, ordered by activity. */
     public static List<Map<String, Object>> fetchEmailActivity() throws IOException, SQLException {
         String query =
