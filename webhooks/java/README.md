@@ -85,9 +85,9 @@ that exercise. The Java files below are in
   annotation from `org.conductoross.conductor.ai.annotations`, on a class of its
   own. `ToolRegistry.fromInstance(new YourTools())` turns those methods into the
   list for the agent builder's `tools(...)`. The agent receives each tool's
-  result as JSON: map keys stay exactly as you wrote them, and a record's
-  components keep their names unless you rename them with Jackson's
-  `@JsonProperty`.
+  result as JSON. A returned `Map<String, Object>` becomes that JSON as it is,
+  with its keys exactly as you wrote them, but the SDK nests any other return
+  value, such as a record, under a `result` key.
 
 ## SDK Notes
 

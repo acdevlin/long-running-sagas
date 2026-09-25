@@ -232,7 +232,9 @@ You will also need to update the webhook's `agent_input` to request this
 analysis. After the workflow reaches `WAIT_FOR_WEBHOOK` and the
 **deploy-workflow** step exits, run the **serve-agent** step in another
 terminal. Keep this separate process running while you send the webhook so the
-resumed workflow can execute the agent's local database tools.
+resumed workflow can execute the agent's local database tools. If
+**serve-agent** is still running from an earlier run, stop it and run it again:
+it keeps running the code it started with, so it won't have your new tools.
 
 As part of your verification with a non-empty database, confirm that the
 Conductor execution contains two dependent tool calls followed by the final
