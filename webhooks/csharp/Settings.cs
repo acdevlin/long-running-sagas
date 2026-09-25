@@ -34,9 +34,12 @@ public sealed class Settings
     public string SourceHeader { get; init; } = "your_source_header_here";
     // The workflow sends one email to each user ID in this list, in parallel. A
     // read-only list keeps every step using the same recipients, in the same order.
-    // Exercise 3: Repeat one user ID so the agent has a clear most-active
-    // recipient to identify from the stored email activity.
-    public IReadOnlyList<string> UserIds { get; init; } = ["alex", "user_1", "user_2", "user_555"];
+    public IReadOnlyList<string> UserIds { get; init; } =
+    [
+        // Repeats give the agent a clear most-active recipient to identify.
+        "alex", "alex", "alex",
+        "user_1", "user_2", "user_555",
+    ];
 
     public static Settings Current { get; } = FromEnv();
 

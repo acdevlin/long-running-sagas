@@ -13,9 +13,12 @@ public static class SendWebhookPayload
             // key, holding the same list of user IDs as the workflow's input.
             ["user_ids"] = Settings.Current.UserIds,
             ["type"] = "customer",
-            // Exercise 3: Replace this prompt with a request to summarize stored email
-            // activity, inspect the busiest recipient's history, and return a digest.
-            ["agent_input"] = "Introduce yourself, then inform the user that their email has been sent.",
+            // The WAIT_FOR_WEBHOOK task passes this to the AGENT task as its prompt.
+            ["agent_input"] =
+                "Create an email activity digest. First summarize all stored email " +
+                "activity. If there is no stored activity, return a concise no-activity " +
+                "digest. Otherwise, inspect the history of the recipient with the " +
+                "greatest number of emails before returning your final analysis.",
             // Every language version shares one webhook; this key selects this
             // language's workflow (see the matches in the deploy step).
             ["language"] = Settings.Current.Language,

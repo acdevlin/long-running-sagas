@@ -9,8 +9,6 @@ public static class QuerySqliteDb
     /// <summary>The local database file, created by the create-db step.</summary>
     public static string DatabasePath { get; } = LocateDatabase();
 
-    // Exercise 3: Use the recipient argument in get_recipient_email_history to
-    // retrieve only the selected recipient's records.
     /// <summary>Return stored emails in insertion order, optionally for one recipient.</summary>
     public static async Task<List<Dictionary<string, object?>>> FetchEmailsAsync(string? recipient = null)
     {
@@ -31,8 +29,6 @@ public static class QuerySqliteDb
         return await ReadRowsAsync(command);
     }
 
-    // Exercise 3: Use this grouped result in summarize_email_activity to calculate
-    // the total email count and return the activity for each recipient.
     /// <summary>Return one email-count row per recipient, ordered by activity.</summary>
     public static async Task<List<Dictionary<string, object?>>> FetchEmailActivityAsync()
     {
@@ -99,9 +95,8 @@ public static class QuerySqliteDb
     }
 
     /// <summary>
-    /// Open a connection to the codelab database, read-only unless
-    /// <paramref name="writable"/> is true. Neither mode creates the database, so
-    /// a missing file fails with a clear message rather than SQLite's generic error.
+    /// Open a connection to the codelab database, read-only unless <paramref name="writable"/> is true.
+    /// Neither mode creates the database, so a missing file gets a clearer error than SQLite's.
     /// </summary>
     public static async Task<SqliteConnection> OpenDatabaseAsync(bool writable = false)
     {
@@ -117,6 +112,9 @@ public static class QuerySqliteDb
         {
             DataSource = DatabasePath,
             Mode = writable ? SqliteOpenMode.ReadWrite : SqliteOpenMode.ReadOnly,
+            // A pooled connection keeps its file open, so a long-running serve-agent step
+            // would keep reading a database file even after it was deleted and re-created.
+            Pooling = false,
         }.ToString();
         var connection = new SqliteConnection(connectionString);
         await connection.OpenAsync();
