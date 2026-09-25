@@ -32,7 +32,8 @@ WORKFLOW_TIMEOUT_SECONDS = 7 * 24 * 60 * 60
 READINESS_TIMEOUT_SECONDS = 60
 POLL_INTERVAL_SECONDS = 1
 
-# Shown in the workflow's description in the Orkes Conductor UI.
+# Shown in the workflow's description in the Orkes Conductor UI, and in every
+# email this version sends, so you can tell the language versions apart.
 CODELAB_LANGUAGE = "Python"
 
 
@@ -62,8 +63,8 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
     send_email_task = send_email(
         task_ref_name="send_email_ref",
         recipients=get_email_task.output("result"),
-        subject="Hello from Orkes",
-        body="Test Email",
+        subject=f"Hello from {CODELAB_LANGUAGE}",
+        body=f"Sent by the {CODELAB_LANGUAGE} version of the webhooks codelab.",
     )
 
     webhook_wait = wait_for_webhook(

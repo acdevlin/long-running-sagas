@@ -31,7 +31,8 @@ public static class DeployWaitForWebhookWorkflow
     private static readonly TimeSpan ReadinessTimeout = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(1);
 
-    // Shown in the workflow's description in the Orkes Conductor UI.
+    // Shown in the workflow's description in the Orkes Conductor UI, and in every
+    // email this version sends, so you can tell the language versions apart.
     private const string CodelabLanguage = "C#";
 
     /// <summary>Build the workflow definition without registering or starting it.</summary>
@@ -55,8 +56,8 @@ public static class DeployWaitForWebhookWorkflow
         // repeats a user ID.
         var sendEmailTask = new SimpleTask("send_email", "send_email_ref")
             .WithInput("recipients", getEmailTask.Output("result"))
-            .WithInput("subject", "Hello from Orkes")
-            .WithInput("body", "Test Email");
+            .WithInput("subject", $"Hello from {CodelabLanguage}")
+            .WithInput("body", $"Sent by the {CodelabLanguage} version of the webhooks codelab.");
 
         // conductor-csharp 3.0.0 serializes WaitForWebHookTask in a way the server
         // rejects, so two fields are corrected here. The server reads the match
