@@ -18,6 +18,7 @@ same exercises, and its README explains how to set it up, how to run each step,
 and where to find each part of the code:
 
 - [Python](python/README.md)
+- [C#](csharp/README.md)
 
 Every language version provides the same five steps, which this README refers
 to by name:

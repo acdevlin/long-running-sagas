@@ -78,7 +78,9 @@ that exercise.
   of. `ToolRegistry.FromInstance` turns those methods into the list of tools for
   the agent's `Tools` property. The agent receives each tool's result as JSON:
   dictionary keys stay exactly as you wrote them, but object properties become
-  camelCase, so use the resulting names in the agent's instructions.
+  camelCase unless you name them with the `[JsonPropertyName]` attribute from
+  `System.Text.Json.Serialization`. Use the resulting names in the agent's
+  instructions.
 
 ## SDK Workarounds
 

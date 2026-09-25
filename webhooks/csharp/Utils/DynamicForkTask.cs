@@ -24,7 +24,8 @@ public class DynamicForkTask : Conductor.Definition.TaskType.Task
     /// <param name="taskReferenceName">Reference name of the fork task.</param>
     /// <param name="tasks">
     /// Expression for the list of task definitions to fork, each with a
-    /// <c>name</c>, a unique <c>taskReferenceName</c> and a <c>type</c>.
+    /// <c>name</c>, a unique <c>taskReferenceName</c> and a <c>type</c>
+    /// (<c>SIMPLE</c> for a worker task).
     /// </param>
     /// <param name="tasksInputs">
     /// Expression for a map from each forked task's <c>taskReferenceName</c> to

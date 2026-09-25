@@ -61,6 +61,8 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
     workflow.description = (
         f"Durable wait-for-webhook example (registered from {CODELAB_LANGUAGE})"
     )
+    # Mark the execution TIMED_OUT if it runs longer than WORKFLOW_TIMEOUT_SECONDS,
+    # for example because no webhook arrives. ALERT_ONLY would let it keep running.
     workflow.timeout_seconds(WORKFLOW_TIMEOUT_SECONDS)
     workflow.timeout_policy(TimeoutPolicy.TIME_OUT_WORKFLOW)
     workflow.input_parameters(["user_ids"])
