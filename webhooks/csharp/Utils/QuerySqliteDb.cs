@@ -118,6 +118,9 @@ public static class QuerySqliteDb
         {
             DataSource = DatabasePath,
             Mode = SqliteOpenMode.ReadOnly,
+            // A pooled connection keeps its file open, so a long-running serve-agent step
+            // would keep reading a database file even after it was deleted and re-created.
+            Pooling = false,
         }.ToString();
         var connection = new SqliteConnection(connectionString);
         await connection.OpenAsync();
