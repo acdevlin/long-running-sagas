@@ -27,14 +27,15 @@ Run every command from this folder (`webhooks/python`).
 | Step | Command |
 | --- | --- |
 | **create-db** | `python -m utils.create_sqlite_db` |
-| **deploy** | `python deploy_wait_for_webhook_workflow.py` |
+| **deploy-workflow** | `python deploy_wait_for_webhook_workflow.py` |
 | **serve-agent** | `python serve_webhook_agent.py` |
 | **send-webhook** | `python send_webhook_payload.py` |
 | **query-db** | `python -m utils.query_sqlite_db` |
 
-The **deploy** step registers the workflow as `wait_for_webhook_demo_python`
-and the agent as `webhook_customer_service_python`. Select
-`wait_for_webhook_demo_python` when you set up your webhook.
+The **deploy-workflow** step registers the workflow as
+`wait_for_webhook_demo_python` and the agent as
+`webhook_customer_service_python`. Select `wait_for_webhook_demo_python` when
+you set up your webhook.
 
 ## Where to Find Each Part
 

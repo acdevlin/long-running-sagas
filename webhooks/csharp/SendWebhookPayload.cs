@@ -10,14 +10,14 @@ public static class SendWebhookPayload
         var payload = new Dictionary<string, object>
         {
             // Exercise 2: Send user_ids instead, the same list as the workflow's input,
-            // to match the WAIT_FOR_WEBHOOK task's rule in the deploy step.
+            // to match the WAIT_FOR_WEBHOOK task's rule in the deploy-workflow step.
             ["user_id"] = Settings.Current.UserId,
             ["type"] = "customer",
             // Exercise 3: Replace this prompt with a request to summarize stored email
             // activity, inspect the busiest recipient's history, and return a digest.
             ["agent_input"] = "Introduce yourself, then inform the user that their email has been sent.",
             // Every language version shares one webhook; this key selects this
-            // language's workflow (see the matches in the deploy step).
+            // language's workflow (see the matches in the deploy-workflow step).
             ["language"] = Settings.Current.Language,
         };
 

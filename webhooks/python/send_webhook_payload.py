@@ -16,7 +16,7 @@ def main():
 
     payload = {
         # Exercise 2: Send user_ids instead, the same list as the workflow's input,
-        # to match the WAIT_FOR_WEBHOOK task's rule in the deploy step.
+        # to match the WAIT_FOR_WEBHOOK task's rule in the deploy-workflow step.
         "user_id": settings.user_id,
         "type": "customer",
         # Exercise 3: Replace this prompt with a request to summarize stored email
@@ -25,7 +25,7 @@ def main():
             "Introduce yourself, then inform the user that their email has been sent."
         ),
         # Every language version shares one webhook; this key selects this
-        # language's workflow (see the matches in the deploy step).
+        # language's workflow (see the matches in the deploy-workflow step).
         "language": settings.language,
     }
 
