@@ -15,6 +15,8 @@ def main():
     }
 
     payload = {
+        # Exercise 2: Send user_ids instead, the same list as the workflow's input,
+        # to match the WAIT_FOR_WEBHOOK task's rule in the deploy step.
         "user_id": settings.user_id,
         "type": "customer",
         # Exercise 3: Replace this prompt with a request to summarize stored email

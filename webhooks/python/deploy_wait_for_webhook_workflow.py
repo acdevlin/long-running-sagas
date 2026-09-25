@@ -50,16 +50,17 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
     workflow.timeout_seconds(WORKFLOW_TIMEOUT_SECONDS)
     workflow.timeout_policy(TimeoutPolicy.TIME_OUT_WORKFLOW)
 
-    # Exercise 2: Iterate over all user_ids in settings.user_ids and get their email addresses.
+    # Exercise 2: Replace this with one get_user_emails task that resolves every address
+    # in workflow.input("user_ids"), so the number of emails is decided at runtime. Pass
+    # it the subject and body as well, for the forked send_email tasks.
     get_email_task = get_user_email(
         task_ref_name="get_user_email_ref",
         user_id=workflow.input("user_id"),
     )
 
-    # Exercise 2: Use a DYNAMIC_FORK to send an email to each recipient.
-    # Be sure to create a JoinTask to consolidate results after your DynamicForkTask.
-    # Also ensure that your task_ref_name values are unique for each sent email, for example by
-    # appending the user_id's position in the list, since Exercise 3 repeats a user_id.
+    # Exercise 2: Send the emails with a DynamicForkTask, using input_parameter to set
+    # its tasks_param and tasks_input_param_name inputs to get_user_emails's outputs.
+    # Pass it a JoinTask with an empty join_on as join_task, to wait for every branch.
     send_email_task = send_email(
         task_ref_name="send_email_ref",
         recipients=get_email_task.output("result"),
@@ -74,8 +75,8 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
             # sent by this language's send_webhook_payload.py.
             "$['language']": settings.language,
             "$['type']": "customer",
-            # Exercise 2: Change to 'user_ids'
-            # Be sure the payload sent by send_webhook_payload.py matches the key you use here.
+            # Exercise 2: Change to 'user_ids'. Be sure the payload sent by
+            # send_webhook_payload.py matches the key you use here.
             "$['user_id']": workflow.input("user_id"),
         },
     )
@@ -121,9 +122,8 @@ def wait_until_webhook_ready(workflow_client, workflow_id: str) -> None:
         )
 
         if wait_task and wait_task.status == "IN_PROGRESS":
-            # Exercise 1: Return this execution, including its tasks, so the caller can
-            # retrieve every completed send_email output. Treat the results as a
-            # collection even though the starter workflow sends only one email.
+            # Exercise 1: Return this execution, with its tasks, so the caller can
+            # read every completed send_email output.
             return None
 
         if execution.status in {"FAILED", "TIMED_OUT", "TERMINATED"}:
@@ -162,9 +162,9 @@ def main() -> None:
         print(f"Workflow URL: {workflow_url}")
 
         _ = wait_until_webhook_ready(workflow_client, workflow_id)
-        # Exercise 1: Retrieve every completed send_email task output and store one
-        # database row per email. Do not rely on one fixed task reference because
-        # Exercise 2 will generate multiple send_email tasks with unique references.
+        # Exercise 1: Store a database row for each completed send_email task's
+        # output_data. Match tasks on task_def_name, not reference_task_name, which
+        # Exercise 2 makes unique per email.
         print(f"{WAIT_TASK_REF} is ready")
         print(
             "Before sending the webhook, start the agent tool workers with "

@@ -31,8 +31,8 @@ public static class QuerySqliteDb
         return await ReadRowsAsync(command);
     }
 
-    // Exercise 3: Use this grouped result in summarize_email_activity to calculate
-    // the total email count and return the activity for each recipient.
+    // Exercise 3: Use these rows in summarize_email_activity to total the emails and return
+    // each recipient's activity. Each row's email_count is a long.
     /// <summary>Return one email-count row per recipient, ordered by activity.</summary>
     public static async Task<List<Dictionary<string, object?>>> FetchEmailActivityAsync()
     {

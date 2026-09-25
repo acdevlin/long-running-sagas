@@ -46,16 +46,14 @@ public static class DeployWaitForWebhookWorkflow
             // for example because no webhook arrives. ALERT_ONLY would let it keep running.
             .WithTimeoutPolicy(WorkflowDef.TimeoutPolicyEnum.TIMEOUTWF, WorkflowTimeoutSeconds);
 
-        // Exercise 2: Iterate over all user IDs in Settings.Current.UserIds and get their email addresses.
+        // Exercise 2: Replace this with one get_user_emails task that resolves every address in
+        // workflow.Input("user_ids"), so the number of emails is decided at runtime. Pass it the
+        // subject and body as well, for the forked send_email tasks.
         var getEmailTask = new SimpleTask("get_user_email", "get_user_email_ref")
             .WithInput("user_id", workflow.Input("user_id"));
 
-        // Exercise 2: Use a DYNAMIC_FORK to send an email to each recipient.
-        // The SDK's DynamicFork is broken, so use Utils/DynamicForkTask instead, and
-        // add a JoinTask right after it in WithTask to consolidate the results.
-        // Also ensure that each sent email's task reference name is unique, for
-        // example by appending the user ID's position in the list, since Exercise 3
-        // repeats a user ID.
+        // Exercise 2: Send the emails with Utils/DynamicForkTask (the SDK's DynamicFork is broken),
+        // then add a JoinTask with no branches straight after it, so it waits for every branch.
         var sendEmailTask = new SimpleTask("send_email", "send_email_ref")
             .WithInput("recipients", getEmailTask.Output("result"))
             .WithInput("subject", $"Hello from {CodelabLanguage}")
@@ -117,10 +115,8 @@ public static class DeployWaitForWebhookWorkflow
             var waitTask = execution.Tasks?.FirstOrDefault(task => task.ReferenceTaskName == WaitTaskRef);
             if (waitTask?.Status == Conductor.Client.Models.Task.StatusEnum.INPROGRESS)
             {
-                // Exercise 1: Return this execution, including its tasks, so the caller can
-                // retrieve every completed send_email output (change this method to return
-                // Task<Workflow>). Treat the results as a collection even though the starter
-                // workflow sends only one email.
+                // Exercise 1: Return this execution, with its tasks, so the caller can read every
+                // send_email output (change this method to return Task<Workflow>).
                 return;
             }
 
@@ -162,10 +158,9 @@ public static class DeployWaitForWebhookWorkflow
             Console.WriteLine($"Workflow URL: {Settings.Current.ServerBaseUrl}/execution/{workflowId}");
 
             await WaitUntilWebhookReadyAsync(configuration.GetClient<WorkflowResourceApi>(), workflowId);
-            // Exercise 1: Retrieve every completed send_email task output and store one
-            // database row per email in QuerySqliteDb.DatabasePath. Do not rely on one
-            // fixed task reference because Exercise 2 will generate multiple send_email
-            // tasks with unique references.
+            // Exercise 1: Store a row in QuerySqliteDb.DatabasePath for each completed send_email
+            // task. Match on TaskDefName, as ReferenceTaskName differs per email from Exercise 2 on.
+            // Each task's result is in its OutputData, where whole numbers arrive as long.
             Console.WriteLine($"{WaitTaskRef} is ready");
             Console.WriteLine(
                 "Before sending the webhook, start the agent tool workers with " +

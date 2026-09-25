@@ -32,9 +32,8 @@ public sealed class Settings
     public string WebhookId { get; init; } = "your_webhook_id_here";
     // Set WEBHOOK_SOURCE_HEADER in .env.
     public string SourceHeader { get; init; } = "your_source_header_here";
-    // Exercise 2: Replace UserId with a list of user IDs (for example UserIds) to
-    // simulate multiple email recipients. The workflow will send an email to each
-    // user ID in this list.
+    // Exercise 2: Replace UserId with a list of user IDs, such as UserIds, so that the
+    // workflow sends an email to each user ID in the list.
     // Exercise 3: Repeat one user ID so the agent has a clear most-active
     // recipient to identify from the stored email activity.
     public string UserId { get; init; } = "user_12345";

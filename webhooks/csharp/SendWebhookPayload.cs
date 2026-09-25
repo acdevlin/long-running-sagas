@@ -9,6 +9,8 @@ public static class SendWebhookPayload
     {
         var payload = new Dictionary<string, object>
         {
+            // Exercise 2: Send user_ids instead, the same list as the workflow's input,
+            // to match the WAIT_FOR_WEBHOOK task's rule in the deploy step.
             ["user_id"] = Settings.Current.UserId,
             ["type"] = "customer",
             // Exercise 3: Replace this prompt with a request to summarize stored email

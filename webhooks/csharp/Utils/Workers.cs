@@ -18,7 +18,9 @@ namespace WebhooksCodelab.Utils;
 [WorkerTask]
 public static class Workers
 {
-    // Exercise 2: Change to "get_user_emails" and take a list of user IDs as input.
+    // Exercise 2: Change to "get_user_emails", taking a list of user IDs. Return the fork's
+    // send_email tasks, each of type "SIMPLE" with a unique taskReferenceName (Exercise 3 repeats
+    // a user ID), and a map from each one to that task's input (see Utils/DynamicForkTask.cs).
     /// <summary>Return the email address associated with a user.</summary>
     [WorkerTask(TaskType = "get_user_email")]
     public static string GetUserEmail([InputParam("user_id")] string userId) =>
@@ -29,8 +31,7 @@ public static class Workers
     public static void SendEmail(string recipients, string subject, string body)
     {
         Console.WriteLine($"Sending email\nTo: {recipients}\nSubject: {subject}\nBody: {body}");
-        // Exercise 1: Return one record from each invocation with the fields required
-        // by the emails table, allowing every completed send_email output to be stored
-        // (change this method's return type to match).
+        // Exercise 1: Return the emails table's fields for this email (change the return type to
+        // match), with sent_time as a Unix timestamp in seconds.
     }
 }
