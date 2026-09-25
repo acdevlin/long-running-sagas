@@ -25,7 +25,7 @@ def main():
             "greatest number of emails before returning your final analysis."
         ),
         # Every language version shares one webhook; this key selects this
-        # language's workflow (see the matches in the deploy step).
+        # language's workflow (see the matches in the deploy-workflow step).
         "language": settings.language,
     }
 

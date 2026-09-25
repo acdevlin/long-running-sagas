@@ -1,0 +1,5 @@
+# Keep the Gradle wrapper scripts runnable whatever a clone's line-ending settings:
+# the shell script needs LF line endings and the Windows batch file needs CRLF.
+/gradlew text eol=lf
+*.bat text eol=crlf
+*.jar binary

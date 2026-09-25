@@ -1,12 +1,12 @@
 // Entry point for every step of the C# webhooks codelab. Run a step from this
-// folder with `dotnet run -- <step>`, for example `dotnet run -- deploy`.
+// folder with `dotnet run -- <step>`, for example `dotnet run -- deploy-workflow`.
 using WebhooksCodelab;
 using WebhooksCodelab.Utils;
 
 var steps = new Dictionary<string, Func<Task>>
 {
     ["create-db"] = CreateSqliteDb.RunAsync,
-    ["deploy"] = DeployWaitForWebhookWorkflow.RunAsync,
+    ["deploy-workflow"] = DeployWaitForWebhookWorkflow.RunAsync,
     ["serve-agent"] = ServeWebhookAgent.RunAsync,
     ["send-webhook"] = SendWebhookPayload.RunAsync,
     ["query-db"] = QuerySqliteDb.RunAsync,

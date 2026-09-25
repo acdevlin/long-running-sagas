@@ -26,7 +26,7 @@ to by name:
 | Step | What it does |
 | --- | --- |
 | **create-db** | Creates the local database used from Exercise 1 onward |
-| **deploy** | Registers the agent and workflow, starts an execution, and exits once it reaches the `WAIT_FOR_WEBHOOK` task |
+| **deploy-workflow** | Registers the agent and workflow, starts an execution, and exits once it reaches the `WAIT_FOR_WEBHOOK` task |
 | **serve-agent** | Runs the agent's local tool workers until you stop it |
 | **send-webhook** | Sends the webhook payload that resumes the workflow |
 | **query-db** | Prints the emails stored in the local database |
@@ -47,8 +47,8 @@ than one language, run only one language's steps at a time, and stop any
 Complete the [Setup section of the top-level README](../README.md#setup) and
 the setup steps for your chosen language first so the Conductor SDK can
 authenticate with your account. You will then need to add a few more values to
-`.env` and confirm that the **deploy**, **serve-agent** and **send-webhook**
-steps run correctly before you can start the codelab content.
+`.env` and confirm that the **deploy-workflow**, **serve-agent** and
+**send-webhook** steps run correctly before you can start the codelab content.
 
 <details>
 
@@ -68,14 +68,14 @@ instead, as listed in your language's README.
    [Integration added to your Orkes account](https://developer.orkescloud.com/integrations?view=connections-and-resources),
    then set `CONDUCTOR_INTEGRATION_NAME` to the name of that integration and
    `CONDUCTOR_AGENT_LLM_MODEL` to the specific model it uses. Now run the
-   **deploy** step. This will deploy and run a workflow named after your
-   language, such as "wait_for_webhook_demo_python", to your Orkes account that
-   looks like this:
+   **deploy-workflow** step. This will deploy and run a workflow named after
+   your language, such as "wait_for_webhook_demo_python", to your Orkes account
+   that looks like this:
 
     <p align="center">
       <img
         src="images/wait_for_webhook_demo_workflow.png"
-        alt="After running the deploy step, you should see a workflow similar to this in your Executions workflow tab. It will pause at the wait_for_webhook_ref task by design."
+        alt="After running the deploy-workflow step, you should see a workflow similar to this in your Executions workflow tab. It will pause at the wait_for_webhook_ref task by design."
         height="300"
       >
     </p>
@@ -124,8 +124,8 @@ instead, as listed in your language's README.
    Set `WEBHOOK_SOURCE_HEADER` to the value of the "source" header you entered
    in your webhook; I suggest `wait-for-webhook-demo-value` as an example.
 
-6. After the **deploy** step reports that `wait_for_webhook_ref` is ready, run
-   the **serve-agent** step in another terminal. Leave this
+6. After the **deploy-workflow** step reports that `wait_for_webhook_ref` is
+   ready, run the **serve-agent** step in another terminal. Leave this
    process running so it can serve the agent's local database tools after the
    workflow resumes.
 
@@ -179,8 +179,8 @@ table.
 
 To write our data to disk, update the `send_email` worker so that each
 invocation returns the relevant information about its sent email. In the
-**deploy** step's code, retrieve the outputs from all completed `send_email`
-task executions and insert one row per output into the
+**deploy-workflow** step's code, retrieve the outputs from all completed
+`send_email` task executions and insert one row per output into the
 "webhook_codelab_storage" database.
 
 **Note: Although the starter workflow sends only one email, you will want to
@@ -229,10 +229,10 @@ with the greatest number of stored emails, retrieve that recipient's history,
 and then write a concise activity digest.
 
 You will also need to update the webhook's `agent_input` to request this
-analysis. After the workflow reaches `WAIT_FOR_WEBHOOK` and the **deploy** step
-exits, run the **serve-agent** step in another terminal. Keep this separate
-process running while you send the webhook so the resumed workflow can execute
-the agent's local database tools.
+analysis. After the workflow reaches `WAIT_FOR_WEBHOOK` and the
+**deploy-workflow** step exits, run the **serve-agent** step in another
+terminal. Keep this separate process running while you send the webhook so the
+resumed workflow can execute the agent's local database tools.
 
 As part of your verification with a non-empty database, confirm that the
 Conductor execution contains two dependent tool calls followed by the final

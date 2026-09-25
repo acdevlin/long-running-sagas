@@ -33,14 +33,15 @@ Run every command from this folder (`webhooks/csharp`).
 | Step | Command |
 | --- | --- |
 | **create-db** | `dotnet run -- create-db` |
-| **deploy** | `dotnet run -- deploy` |
+| **deploy-workflow** | `dotnet run -- deploy-workflow` |
 | **serve-agent** | `dotnet run -- serve-agent` |
 | **send-webhook** | `dotnet run -- send-webhook` |
 | **query-db** | `dotnet run -- query-db` |
 
-The **deploy** step registers the workflow as `wait_for_webhook_demo_csharp`
-and the agent as `webhook_customer_service_csharp`. Select
-`wait_for_webhook_demo_csharp` when you set up your webhook.
+The **deploy-workflow** step registers the workflow as
+`wait_for_webhook_demo_csharp` and the agent as
+`webhook_customer_service_csharp`. Select `wait_for_webhook_demo_csharp` when
+you set up your webhook.
 
 ## Where to Find Each Part
 
@@ -93,10 +94,11 @@ explaining why, so leave these parts as they are:
   sets the `WAIT_FOR_WEBHOOK` task's type directly, and `Utils/AgentTask.cs`
   does the same for the `AGENT` task, which the SDK has no class for.
 - **Webhook match rules:** `WaitForWebHookTask` puts the match rules in the
-  wrong place, so the **deploy** step nests them under `matches` itself.
+  wrong place, so the **deploy-workflow** step nests them under `matches`
+  itself.
 - **Workflow output:** `ConductorWorkflow.WithOutputParameter` throws an
-  exception on a new workflow, so the **deploy** step sets `OutputParameters`
-  directly.
+  exception on a new workflow, so the **deploy-workflow** step sets
+  `OutputParameters` directly.
 - **Dynamic forks:** The SDK's `DynamicFork` class leaves out the settings that
   tell the server where to find the forked tasks, so use
   `Utils/DynamicForkTask.cs` instead.
