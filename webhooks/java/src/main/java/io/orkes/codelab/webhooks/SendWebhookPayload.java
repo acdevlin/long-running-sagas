@@ -20,9 +20,8 @@ public final class SendWebhookPayload {
         Settings settings = Settings.current();
 
         Map<String, Object> payload = new LinkedHashMap<>();
-        // Exercise 2: Send user_ids instead, the same list as the workflow's input,
-        // to match the WAIT_FOR_WEBHOOK task's rule in the deploy-workflow step.
-        payload.put("user_id", Settings.USER_ID);
+        // The same list as the workflow's input, which the WAIT_FOR_WEBHOOK task matches on.
+        payload.put("user_ids", Settings.USER_IDS);
         payload.put("type", "customer");
         // Exercise 3: Replace this prompt with a request to summarize stored email
         // activity, inspect the busiest recipient's history, and return a digest.

@@ -5,6 +5,7 @@ import com.netflix.conductor.common.metadata.tasks.Task;
 import com.netflix.conductor.common.metadata.workflow.WorkflowDef;
 import com.netflix.conductor.common.run.Workflow;
 import com.netflix.conductor.sdk.workflow.def.ConductorWorkflow;
+import com.netflix.conductor.sdk.workflow.def.tasks.DynamicFork;
 import com.netflix.conductor.sdk.workflow.def.tasks.SimpleTask;
 import com.netflix.conductor.sdk.workflow.executor.WorkflowExecutor;
 
@@ -61,29 +62,23 @@ public final class DeployWaitForWebhookWorkflow {
         String subject = "Hello from " + CODELAB_LANGUAGE;
         String body = "Sent by the " + CODELAB_LANGUAGE + " version of the webhooks codelab.";
 
-        // Exercise 2: Replace this with one get_user_emails task that resolves every address in
-        // ConductorWorkflow.input.get("user_ids"), so the number of emails is decided at runtime.
-        // Pass it the subject and body as well, for the forked send_email tasks.
-        var getEmailTask =
-                new SimpleTask("get_user_email", "get_user_email_ref")
-                        .input("user_id", ConductorWorkflow.input.get("user_id"));
-
-        // Exercise 2: Send the emails with new DynamicFork(referenceName, getEmailsTask). It adds
-        // get_user_emails before itself and a join after, so add only the fork to the workflow.
-        var sendEmailTask =
-                new SimpleTask("send_email", "send_email_ref")
-                        .input("recipients", getEmailTask.taskOutput.get("result"))
+        // Builds every send_email task for the fork, so it takes the subject and body too.
+        var getEmailsTask =
+                new SimpleTask("get_user_emails", "get_user_emails_ref")
+                        .input("user_ids", ConductorWorkflow.input.get("user_ids"))
                         .input("subject", subject)
                         .input("body", body);
+
+        // The fork adds getEmailsTask before itself and a join after, so add only the fork.
+        var sendEmailsFork = new DynamicFork("send_emails_fork", getEmailsTask);
 
         Map<String, Object> matches = new LinkedHashMap<>();
         // Every language version shares one webhook, so only match
         // payloads sent by this language's send-webhook step.
         matches.put("$['language']", Settings.LANGUAGE);
         matches.put("$['type']", "customer");
-        // Exercise 2: Change to 'user_ids'. Be sure the payload sent by
-        // SendWebhookPayload.java matches the key you use here.
-        matches.put("$['user_id']", ConductorWorkflow.input.get("user_id"));
+        // Only resume for a webhook about the same users this execution emailed.
+        matches.put("$['user_ids']", ConductorWorkflow.input.get("user_ids"));
         var webhookWait = new WaitForWebhookTask(WAIT_TASK_REF, matches);
 
         var agentTask =
@@ -92,8 +87,7 @@ public final class DeployWaitForWebhookWorkflow {
                         WebhookAgent.NAME,
                         webhookWait.taskOutput.get("agent_input"));
 
-        workflow.add(getEmailTask);
-        workflow.add(sendEmailTask);
+        workflow.add(sendEmailsFork);
         workflow.add(webhookWait);
         workflow.add(agentTask);
         workflow.setWorkflowOutput(Map.of("agent_response", agentTask.taskOutput.get("text")));
@@ -104,7 +98,7 @@ public final class DeployWaitForWebhookWorkflow {
     /** Start one workflow execution and return its execution ID. */
     private static String startWorkflow(WorkflowExecutor workflowExecutor) {
         return workflowExecutor.startWorkflow(
-                WORKFLOW_NAME, WORKFLOW_VERSION, Map.of("user_id", Settings.USER_ID));
+                WORKFLOW_NAME, WORKFLOW_VERSION, Map.of("user_ids", Settings.USER_IDS));
     }
 
     /** Wait until the execution reaches its WAIT_FOR_WEBHOOK task. */

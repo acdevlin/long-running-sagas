@@ -5,6 +5,7 @@ import io.orkes.conductor.client.ApiClient;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 
@@ -25,11 +26,10 @@ public record Settings(
     // payload, so every language version can share one webhook.
     public static final String LANGUAGE = "java";
 
-    // Exercise 2: Replace USER_ID with a list of user IDs, such as USER_IDS, so that the
-    // workflow sends an email to each user ID in the list.
+    // The workflow sends an email to each user ID in this list.
     // Exercise 3: Repeat one user ID so the agent has a clear most-active
     // recipient to identify from the stored email activity.
-    public static final String USER_ID = "user_12345";
+    public static final List<String> USER_IDS = List.of("alex", "user_1", "user_2", "user_555");
 
     private static final Settings CURRENT = fromEnv();
 
