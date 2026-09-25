@@ -42,6 +42,8 @@ public static class DeployWaitForWebhookWorkflow
             .WithName(WorkflowName)
             .WithVersion(WorkflowVersion)
             .WithDescription($"Durable wait-for-webhook example (registered from {CodelabLanguage})")
+            // Mark the execution TIMED_OUT if it runs longer than WorkflowTimeoutSeconds,
+            // for example because no webhook arrives. ALERT_ONLY would let it keep running.
             .WithTimeoutPolicy(WorkflowDef.TimeoutPolicyEnum.TIMEOUTWF, WorkflowTimeoutSeconds);
 
         // Exercise 2: Iterate over all user IDs in Settings.Current.UserIds and get their email addresses.
@@ -110,7 +112,7 @@ public static class DeployWaitForWebhookWorkflow
 
         while (elapsed.Elapsed < ReadinessTimeout)
         {
-            var execution = workflowClient.GetExecutionStatus(workflowId, includeTasks: true);
+            var execution = await workflowClient.GetExecutionStatusAsync(workflowId, includeTasks: true);
 
             var waitTask = execution.Tasks?.FirstOrDefault(task => task.ReferenceTaskName == WaitTaskRef);
             if (waitTask?.Status == Conductor.Client.Models.Task.StatusEnum.INPROGRESS)
@@ -146,7 +148,7 @@ public static class DeployWaitForWebhookWorkflow
 
         try
         {
-            // Deploy agent definition
+            // Register the agent that the workflow's AGENT task runs.
             await using (var runtime = new AgentRuntime(configuration))
             {
                 await runtime.DeployAsync(WebhookAgent.Agent);
