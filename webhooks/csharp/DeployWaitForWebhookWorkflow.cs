@@ -41,7 +41,8 @@ public static class DeployWaitForWebhookWorkflow
     private static readonly TimeSpan ReadinessTimeout = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(1);
 
-    // Shown in the workflow's description in the Orkes Conductor UI.
+    // Shown in the workflow's description in the Orkes Conductor UI, and in every
+    // email this version sends, so you can tell the language versions apart.
     private const string CodelabLanguage = "C#";
 
     /// <summary>Build the workflow definition without registering or starting it.</summary>
@@ -51,22 +52,32 @@ public static class DeployWaitForWebhookWorkflow
             .WithName(WorkflowName)
             .WithVersion(WorkflowVersion)
             .WithDescription($"Durable wait-for-webhook example (registered from {CodelabLanguage})")
-            .WithTimeoutPolicy(WorkflowDef.TimeoutPolicyEnum.TIMEOUTWF, WorkflowTimeoutSeconds);
+            .WithTimeoutPolicy(WorkflowDef.TimeoutPolicyEnum.TIMEOUTWF, WorkflowTimeoutSeconds)
+            // Lists the input that StartWorkflow supplies. Conductor shows it in the
+            // workflow definition but does not require it when a workflow starts.
+            .WithInputParameter("user_ids");
 
-        // Exercise 2: Iterate over all user IDs in Settings.Current.UserIds and get their email addresses.
-        var getEmailTask = new SimpleTask("get_user_email", "get_user_email_ref")
-            .WithInput("user_id", workflow.Input("user_id"));
+        // Resolve every recipient's address in a single worker task, which also
+        // prepares one send_email task per address for the fork below.
+        var getEmailsTask = new SimpleTask(Workers.GetUserEmailsTaskName, "get_user_emails_ref")
+            .WithInput("user_ids", workflow.Input("user_ids"))
+            .WithInput("subject", $"Hello from {CodelabLanguage}")
+            .WithInput("body", $"Sent by the {CodelabLanguage} version of the webhooks codelab.");
 
-        // Exercise 2: Use a DYNAMIC_FORK to send an email to each recipient.
-        // The SDK's DynamicFork is broken, so use Utils/DynamicForkTask instead, and
-        // add a JoinTask right after it in WithTask to consolidate the results.
-        // Also ensure that each sent email's task reference name is unique, for
-        // example by appending the user ID's position in the list, since Exercise 3
-        // repeats a user ID.
-        var sendEmailTask = new SimpleTask(Workers.SendEmailTaskName, "send_email_ref")
-            .WithInput("recipients", getEmailTask.Output("result"))
-            .WithInput("subject", "Hello from Orkes")
-            .WithInput("body", "Test Email");
+        // A DYNAMIC_FORK task starts one parallel branch for each task that
+        // get_user_emails returned, so the number of emails is decided at runtime
+        // rather than in this definition. Utils/DynamicForkTask.cs replaces the
+        // SDK's DynamicFork class, which does not work in conductor-csharp 3.0.0.
+        var sendEmailsFork = new DynamicForkTask(
+            "send_emails_fork",
+            getEmailsTask.Output(Workers.DynamicTasksKey),
+            getEmailsTask.Output(Workers.DynamicTaskInputsKey));
+
+        // A JOIN task holds the workflow until the fork's branches finish, so every
+        // email is sent before the workflow waits for the webhook. JoinOn normally
+        // lists the branches to wait for, but a dynamic fork's branches are only
+        // known at runtime, so it is left empty and the server waits for all of them.
+        var sendEmailsJoin = new JoinTask("send_emails_join");
 
         // conductor-csharp 3.0.0 serializes WaitForWebHookTask in a way the server
         // rejects, so two fields are corrected here. The server reads the match
@@ -81,9 +92,9 @@ public static class DeployWaitForWebhookWorkflow
                 // payloads sent by this language's send-webhook step.
                 ["$['language']"] = Settings.Current.Language,
                 ["$['type']"] = "customer",
-                // Exercise 2: Change to 'user_ids'.
-                // Be sure the payload sent by SendWebhookPayload.cs matches the key you use here.
-                ["$['user_id']"] = workflow.Input("user_id"),
+                // Only resume for a webhook about the recipients this execution
+                // emailed. The send-webhook step sends the same user_ids list.
+                ["$['user_ids']"] = workflow.Input("user_ids"),
             },
         });
         webhookWait.WorkflowTaskType = null;
@@ -94,7 +105,8 @@ public static class DeployWaitForWebhookWorkflow
             WebhookAgent.Agent.Name,
             webhookWait.Output("agent_input"));
 
-        workflow.WithTask(getEmailTask, sendEmailTask, webhookWait, agentTask);
+        // The JOIN must come straight after its DYNAMIC_FORK.
+        workflow.WithTask(getEmailsTask, sendEmailsFork, sendEmailsJoin, webhookWait, agentTask);
         // Set directly because WithOutputParameter throws while OutputParameters
         // is still null, which it is for every new ConductorWorkflow.
         workflow.OutputParameters = new Dictionary<string, object>
@@ -110,7 +122,7 @@ public static class DeployWaitForWebhookWorkflow
         workflowExecutor.StartWorkflow(new StartWorkflowRequest(
             name: WorkflowName,
             version: WorkflowVersion,
-            input: new Dictionary<string, object> { ["user_id"] = Settings.Current.UserId }));
+            input: new Dictionary<string, object> { ["user_ids"] = Settings.Current.UserIds }));
 
     /// <summary>Return the execution after it reaches its WAIT_FOR_WEBHOOK task.</summary>
     private static async Task<Workflow> WaitUntilWebhookReadyAsync(WorkflowResourceApi workflowClient, string workflowId)
@@ -144,7 +156,8 @@ public static class DeployWaitForWebhookWorkflow
     /// <summary>Return valid outputs from every completed send-email task.</summary>
     private static List<Dictionary<string, object>> GetCompletedEmailOutputs(Workflow execution)
     {
-        // Task-definition names remain stable while task references may not.
+        // Match on the task name, because each forked send_email task has its own
+        // reference name (send_email_0, send_email_1 and so on).
         var emailTasks = (execution.Tasks ?? [])
             .Where(task => task.TaskDefName == Workers.SendEmailTaskName
                 && task.Status == Conductor.Client.Models.Task.StatusEnum.COMPLETED)

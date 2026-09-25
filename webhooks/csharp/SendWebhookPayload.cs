@@ -9,7 +9,9 @@ public static class SendWebhookPayload
     {
         var payload = new Dictionary<string, object>
         {
-            ["user_id"] = Settings.Current.UserId,
+            // Must match the WAIT_FOR_WEBHOOK task's $['user_ids'] rule: the same
+            // key, holding the same list of user IDs as the workflow's input.
+            ["user_ids"] = Settings.Current.UserIds,
             ["type"] = "customer",
             // Exercise 3: Replace this prompt with a request to summarize stored email
             // activity, inspect the busiest recipient's history, and return a digest.

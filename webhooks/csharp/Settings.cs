@@ -31,12 +31,11 @@ public sealed record Settings
     public string WebhookId { get; init; } = "your_webhook_id_here";
     // Set WEBHOOK_SOURCE_HEADER in .env.
     public string SourceHeader { get; init; } = "your_source_header_here";
-    // Exercise 2: Replace UserId with a list of user IDs (for example UserIds) to
-    // simulate multiple email recipients. The workflow will send an email to each
-    // user ID in this list.
+    // The workflow sends one email to each user ID in this list, in parallel. A
+    // read-only list keeps every step using the same recipients, in the same order.
     // Exercise 3: Repeat one user ID so the agent has a clear most-active
     // recipient to identify from the stored email activity.
-    public string UserId { get; init; } = "user_12345";
+    public IReadOnlyList<string> UserIds { get; init; } = ["alex", "user_1", "user_2", "user_555"];
 
     public static Settings Current { get; } = FromEnv();
 

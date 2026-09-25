@@ -18,16 +18,86 @@ namespace WebhooksCodelab.Utils;
 [WorkerTask]
 public static class Workers
 {
-    // Shared with the deploy step, which finds the completed sends by this name.
+    // Task names shared with the deploy step. It schedules get_user_emails by
+    // name, and finds the completed sends by the send_email name.
+    public const string GetUserEmailsTaskName = "get_user_emails";
     public const string SendEmailTaskName = "send_email";
 
-    // Exercise 2: Change to "get_user_emails" and take a list of user IDs as input.
-    /// <summary>Return the email address associated with a user.</summary>
-    [WorkerTask(TaskType = "get_user_email")]
-    public static string GetUserEmail([InputParam("user_id")] string userId) =>
-        $"{userId}@example.com";
+    // The keys of get_user_emails's output that the deploy step passes to its
+    // DYNAMIC_FORK task: the tasks to fork, and the input for each of them.
+    public const string DynamicTasksKey = "dynamicTasks";
+    public const string DynamicTaskInputsKey = "dynamicTasksInputs";
+
+    /// <summary>
+    /// Resolve each user's email address and describe one send_email task per
+    /// address, for the workflow's DYNAMIC_FORK task to run in parallel.
+    /// </summary>
+    /// <remarks>
+    /// A DYNAMIC_FORK task only decides which branches to run when the workflow
+    /// reaches it, using two inputs: a list of task definitions, and a map from
+    /// each definition's reference name to that task's input. Returning both from
+    /// this worker means the workflow sends as many emails as there are user IDs.
+    /// </remarks>
+    [WorkerTask(TaskType = GetUserEmailsTaskName)]
+    public static Dictionary<string, object> GetUserEmails(
+        [InputParam("user_ids")] List<string>? userIds, string subject, string body)
+    {
+        // The SDK passes null when the workflow does not supply user_ids.
+        // Throwing an exception fails this task. Conductor then retries it as its
+        // task definition allows, and fails the workflow if every attempt fails.
+        if (userIds is not { Count: > 0 })
+        {
+            throw new ArgumentException("At least one user ID is required", nameof(userIds));
+        }
+
+        // The SDK sends these nested collections to Conductor as JSON arrays and
+        // objects. Each task definition mixes strings with a nested dictionary,
+        // so their values are typed as object.
+        var dynamicTasks = new List<object>();
+        var dynamicTaskInputs = new Dictionary<string, object>();
+
+        for (var index = 0; index < userIds.Count; index++)
+        {
+            var userId = userIds[index];
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                throw new ArgumentException($"Invalid user ID at index {index}", nameof(userIds));
+            }
+
+            // Every task in a workflow execution needs a unique reference name.
+            // The same user ID can appear more than once, so use its position.
+            var taskReferenceName = $"send_email_{index}";
+            dynamicTasks.Add(new Dictionary<string, object>
+            {
+                ["name"] = SendEmailTaskName,
+                ["taskReferenceName"] = taskReferenceName,
+                ["type"] = "SIMPLE",
+                // Empty because the fork supplies each task's input from the
+                // dynamic task inputs below.
+                ["inputParameters"] = new Dictionary<string, object>(),
+            });
+            dynamicTaskInputs[taskReferenceName] = new Dictionary<string, object>
+            {
+                ["recipients"] = $"{userId}@example.com",
+                ["subject"] = subject,
+                ["body"] = body,
+            };
+        }
+
+        return new Dictionary<string, object>
+        {
+            [DynamicTasksKey] = dynamicTasks,
+            [DynamicTaskInputsKey] = dynamicTaskInputs,
+        };
+    }
 
     /// <summary>Simulate sending an email.</summary>
+    /// <remarks>
+    /// Conductor schedules every forked send_email task at once. The SDK polls
+    /// for up to a batch of tasks at a time (twice the processor count, and at
+    /// least 2) and runs a batch in parallel, so this worker needs no extra
+    /// settings to send the emails in parallel.
+    /// </remarks>
     [WorkerTask(TaskType = SendEmailTaskName)]
     public static Dictionary<string, object> SendEmail(string recipients, string subject, string body)
     {
