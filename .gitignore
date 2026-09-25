@@ -202,3 +202,12 @@ obj/
 *.user
 *.suo
 *.DotSettings.user
+
+# Java and Gradle build output (build/ is ignored above)
+.gradle/
+*.class
+
+# Eclipse and VS Code Java project files
+.classpath
+.project
+.settings/
