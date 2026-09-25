@@ -17,7 +17,11 @@ namespace WebhooksCodelab.Utils;
 /// </summary>
 public static class WebhookAgent
 {
-    public static Agent Agent { get; } = Create();
+    // Built on first use rather than in a static initializer, which would wrap
+    // Create's error about a malformed model setting in a TypeInitializationException.
+    private static readonly Lazy<Agent> LazyAgent = new(Create);
+
+    public static Agent Agent => LazyAgent.Value;
 
     private static Agent Create()
     {

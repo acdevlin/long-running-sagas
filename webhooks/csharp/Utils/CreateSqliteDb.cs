@@ -8,10 +8,10 @@ public static class CreateSqliteDb
 {
     public static async Task RunAsync()
     {
-        // The schema is shared by every language version of this codelab
+        // The schema is shared by every language version of this codelab.
         var schema = await File.ReadAllTextAsync(SchemaPath());
 
-        // Implicitly creates a new DB by connecting to it
+        // Implicitly creates a new DB by connecting to it.
         var connectionString = new SqliteConnectionStringBuilder
         {
             DataSource = QuerySqliteDb.DatabasePath,
@@ -19,7 +19,7 @@ public static class CreateSqliteDb
         await using var connection = new SqliteConnection(connectionString);
         await connection.OpenAsync();
 
-        // Create the tables defined in the shared schema
+        // Create the tables defined in the shared schema.
         await using var command = connection.CreateCommand();
         command.CommandText = schema;
         await command.ExecuteNonQueryAsync();

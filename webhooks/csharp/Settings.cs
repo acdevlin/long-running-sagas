@@ -13,11 +13,12 @@ namespace WebhooksCodelab;
 /// is loaded automatically below. Variables already exported in your shell take
 /// precedence over the ones in <c>.env</c>.
 /// </summary>
-public sealed record Settings
+public sealed class Settings
 {
     // Set CONDUCTOR_SERVER_URL in .env; the webhook URL is derived from it.
     public string ConductorServerUrl { get; init; } = "https://developer.orkescloud.com/api";
-    // Set CONDUCTOR_AUTH_KEY and CONDUCTOR_AUTH_SECRET in .env.
+    // Set CONDUCTOR_AUTH_KEY and CONDUCTOR_AUTH_SECRET in .env. Settings is a class
+    // rather than a record, because a record's generated ToString() prints the secret.
     public string? AuthKey { get; init; }
     public string? AuthSecret { get; init; }
     // Set CONDUCTOR_AGENT_LLM_MODEL in .env to use a different model.
@@ -45,7 +46,7 @@ public sealed record Settings
         get
         {
             var url = ConductorServerUrl.TrimEnd('/');
-            return url.EndsWith("/api") ? url[..^"/api".Length] : url;
+            return url.EndsWith("/api", StringComparison.Ordinal) ? url[..^"/api".Length] : url;
         }
     }
 
