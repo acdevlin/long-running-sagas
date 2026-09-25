@@ -18,6 +18,7 @@ same exercises, and its README explains how to set it up, how to run each step,
 and where to find each part of the code:
 
 - [Python](python/README.md)
+- [C#](csharp/README.md)
 
 Every language version provides the same five steps, which this README refers
 to by name:
@@ -222,9 +223,10 @@ In this exercise, give your language's agent, such as
 
 Implement both functions as read-only agent tools (your language's README
 explains how its SDK declares a tool), then add them to the agent's tool list.
-Have the agent first review the summary, identify the recipient with the
-greatest number of stored emails, retrieve that recipient's history, and then
-write a concise activity digest.
+Have the agent first review the summary, and, if no stored activity exists,
+return a concise no-activity digest. Otherwise, have it identify the recipient
+with the greatest number of stored emails, retrieve that recipient's history,
+and then write a concise activity digest.
 
 You will also need to update the webhook's `agent_input` to request this
 analysis. After the workflow reaches `WAIT_FOR_WEBHOOK` and the **deploy** step
@@ -232,8 +234,10 @@ exits, run the **serve-agent** step in another terminal. Keep this separate
 process running while you send the webhook so the resumed workflow can execute
 the agent's local database tools.
 
-As part of your verification, confirm that the Conductor execution contains two
-dependent tool calls followed by the final digest.
+As part of your verification with a non-empty database, confirm that the
+Conductor execution contains two dependent tool calls followed by the final
+digest. With an empty database, confirm that the summary call is followed
+directly by the no-activity digest.
 
 ## Recap: What You Built
 
