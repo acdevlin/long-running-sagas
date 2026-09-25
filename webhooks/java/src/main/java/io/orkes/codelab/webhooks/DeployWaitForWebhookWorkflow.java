@@ -9,12 +9,15 @@ import com.netflix.conductor.sdk.workflow.def.tasks.SimpleTask;
 import com.netflix.conductor.sdk.workflow.executor.WorkflowExecutor;
 
 import io.orkes.codelab.webhooks.utils.AgentTask;
+import io.orkes.codelab.webhooks.utils.QuerySqliteDb;
 import io.orkes.codelab.webhooks.utils.WaitForWebhookTask;
 import io.orkes.codelab.webhooks.utils.WebhookAgent;
 import io.orkes.codelab.webhooks.utils.Workers;
 
 import org.conductoross.conductor.ai.AgentRuntime;
 
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -105,7 +108,7 @@ public final class DeployWaitForWebhookWorkflow {
     }
 
     /** Wait until the execution reaches its WAIT_FOR_WEBHOOK task. */
-    private static void waitUntilWebhookReady(WorkflowClient workflowClient, String workflowId)
+    private static Workflow waitUntilWebhookReady(WorkflowClient workflowClient, String workflowId)
             throws InterruptedException, TimeoutException {
         // Unlike Instant.now(), System.nanoTime() is unaffected by changes to the system clock.
         long deadline = System.nanoTime() + READINESS_TIMEOUT.toNanos();
@@ -120,9 +123,7 @@ public final class DeployWaitForWebhookWorkflow {
                                             WAIT_TASK_REF.equals(task.getReferenceTaskName())
                                                     && task.getStatus() == Task.Status.IN_PROGRESS);
             if (waiting) {
-                // Exercise 1: Return this execution, with its tasks, so the caller can read every
-                // send_email output (change this method to return Workflow).
-                return;
+                return execution;
             }
 
             if (execution.getStatus().isTerminal()) {
@@ -138,7 +139,38 @@ public final class DeployWaitForWebhookWorkflow {
                         .formatted(WAIT_TASK_REF, READINESS_TIMEOUT.toSeconds()));
     }
 
-    public static int run() throws InterruptedException, TimeoutException {
+    /** Insert all completed email outputs in one database transaction. */
+    private static int storeEmailOutputs(Workflow execution) throws SQLException {
+        List<Map<String, Object>> emails =
+                execution.getTasks().stream()
+                        .filter(task -> "send_email".equals(task.getTaskDefName()))
+                        .filter(task -> task.getStatus() == Task.Status.COMPLETED)
+                        .map(task -> task.getOutputData())
+                        .toList();
+        String insertSql =
+                """
+                INSERT INTO emails (sent_time, subject, recipients)
+                VALUES (?, ?, ?)
+                """;
+
+        try (var connection =
+                        DriverManager.getConnection("jdbc:sqlite:" + QuerySqliteDb.DATABASE_PATH);
+                var insert = connection.prepareStatement(insertSql)) {
+            // Use a single DB transaction to avoid partial insert failures.
+            connection.setAutoCommit(false);
+            for (Map<String, Object> email : emails) {
+                // The server returns whole numbers as Integer or Long, depending on their size.
+                insert.setLong(1, ((Number) email.get("sent_time")).longValue());
+                insert.setString(2, (String) email.get("subject"));
+                insert.setString(3, (String) email.get("recipients"));
+                insert.executeUpdate();
+            }
+            connection.commit();
+        }
+        return emails.size();
+    }
+
+    public static int run() throws InterruptedException, TimeoutException, SQLException {
         Settings settings = Settings.current();
         // Build the agent first, so a malformed model setting fails before any worker starts.
         var agent = WebhookAgent.create();
@@ -147,7 +179,7 @@ public final class DeployWaitForWebhookWorkflow {
 
         try {
             // Starts polling for the tasks of every @WorkerTask method in Workers.
-            workflowExecutor.initWorkersFromInstances(List.of(new Workers()));
+            workflowExecutor.initWorkersFromInstances(List.<Object>of(new Workers()));
 
             // Register the agent that the workflow's AGENT task runs. The runtime gets a client
             // of its own, because closing the runtime also shuts down the client it was given.
@@ -165,10 +197,10 @@ public final class DeployWaitForWebhookWorkflow {
             System.out.println(
                     "Workflow URL: " + settings.serverBaseUrl() + "/execution/" + workflowId);
 
-            waitUntilWebhookReady(new WorkflowClient(apiClient), workflowId);
-            // Exercise 1: Store a row in QuerySqliteDb.DATABASE_PATH for each completed send_email
-            // task, matching on getTaskDefName(): each task's getReferenceTaskName() is unique from
-            // Exercise 2 on. Read each result from getOutputData(); numbers are Integer or Long.
+            Workflow execution = waitUntilWebhookReady(new WorkflowClient(apiClient), workflowId);
+            int storedCount = storeEmailOutputs(execution);
+            System.out.println(
+                    "Stored " + storedCount + " email record(s) in " + QuerySqliteDb.DATABASE_PATH);
             System.out.println(WAIT_TASK_REF + " is ready");
             System.out.println(
                     "Before sending the webhook, start the agent tool workers with "

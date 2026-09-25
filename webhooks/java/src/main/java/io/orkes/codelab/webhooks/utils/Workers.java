@@ -3,6 +3,9 @@ package io.orkes.codelab.webhooks.utils;
 import com.netflix.conductor.sdk.workflow.task.InputParam;
 import com.netflix.conductor.sdk.workflow.task.WorkerTask;
 
+import java.time.Instant;
+import java.util.Map;
+
 /**
  * Worker tasks used by the webhook workflow. The deploy-workflow step registers an instance of this
  * class, and the SDK then polls for each {@code @WorkerTask} method's tasks and runs them here.
@@ -24,13 +27,15 @@ public final class Workers {
     // forked emails in parallel.
     /** Simulate sending an email. */
     @WorkerTask("send_email")
-    public void sendEmail(
+    public Map<String, Object> sendEmail(
             @InputParam("recipients") String recipients,
             @InputParam("subject") String subject,
             @InputParam("body") String body) {
         System.out.printf(
                 "Sending email%nTo: %s%nSubject: %s%nBody: %s%n", recipients, subject, body);
-        // Exercise 1: Return this email's fields for the emails table (a Map or a record both
-        // work), with sent_time as a Unix timestamp in seconds.
+        return Map.of(
+                "sent_time", Instant.now().getEpochSecond(),
+                "subject", subject,
+                "recipients", recipients);
     }
 }
