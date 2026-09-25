@@ -46,7 +46,8 @@ WORKFLOW_TIMEOUT_SECONDS = 7 * 24 * 60 * 60
 READINESS_TIMEOUT_SECONDS = 60
 POLL_INTERVAL_SECONDS = 1
 
-# Shown in the workflow's description in the Orkes Conductor UI.
+# Shown in the workflow's description in the Orkes Conductor UI, and in every
+# email this version sends, so you can tell the language versions apart.
 CODELAB_LANGUAGE = "Python"
 
 
@@ -68,8 +69,8 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
     get_emails_task = get_user_emails(
         task_ref_name="get_user_emails_ref",
         user_ids=workflow.input("user_ids"),
-        subject="Hello from Alex",
-        body="foo bar qua",
+        subject=f"Hello from {CODELAB_LANGUAGE}",
+        body=f"Sent by the {CODELAB_LANGUAGE} version of the webhooks codelab.",
     )
 
     # Dynamic branch references are unknown until runtime, so we use an empty join_on
