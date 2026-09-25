@@ -153,7 +153,7 @@ public static class DeployWaitForWebhookWorkflow
             $"Workflow did not reach {WaitTaskRef} within {ReadinessTimeout.TotalSeconds} seconds");
     }
 
-    /// <summary>Return valid outputs from every completed send-email task.</summary>
+    /// <summary>Return valid outputs from every completed send_email task.</summary>
     private static List<Dictionary<string, object>> GetCompletedEmailOutputs(Workflow execution)
     {
         // Match on the task name, because each forked send_email task has its own
@@ -173,7 +173,7 @@ public static class DeployWaitForWebhookWorkflow
         {
             var output = task.OutputData
                 ?? throw new InvalidOperationException(
-                    $"Completed task {task.ReferenceTaskName} has invalid output");
+                    $"Completed task {task.ReferenceTaskName} has no output");
 
             // A null value has no type, so this also rejects missing (null) values.
             var invalidFields = EmailOutputFields

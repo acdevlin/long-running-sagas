@@ -65,7 +65,8 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
     workflow.timeout_policy(TimeoutPolicy.TIME_OUT_WORKFLOW)
     workflow.input_parameters(["user_ids"])
 
-    # Render the full recipient list and prepare every branch in a single worker task
+    # Resolve every recipient's address in a single worker task, which also
+    # prepares one send_email task per address for the fork below.
     get_emails_task = get_user_emails(
         task_ref_name="get_user_emails_ref",
         user_ids=workflow.input("user_ids"),
@@ -103,7 +104,8 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
             # sent by this language's send_webhook_payload.py.
             "$['language']": settings.language,
             "$['type']": "customer",
-            # Assume that we want emails sent to all provided user IDs
+            # Only resume for a webhook about the recipients this execution
+            # emailed. send_webhook_payload.py sends the same user_ids list.
             "$['user_ids']": workflow.input("user_ids"),
         },
     )
@@ -166,7 +168,7 @@ def wait_until_webhook_ready(workflow_client, workflow_id: str) -> Workflow:
 def get_completed_email_outputs(
     execution: Workflow,
 ) -> list[dict[str, Any]]:
-    """Return valid outputs from every completed send-email task."""
+    """Return valid outputs from every completed send_email task."""
     # Task-definition names remain stable while Dynamic Fork references do not.
     email_tasks = [
         task

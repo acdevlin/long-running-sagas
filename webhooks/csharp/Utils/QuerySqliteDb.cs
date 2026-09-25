@@ -99,12 +99,9 @@ public static class QuerySqliteDb
     }
 
     /// <summary>
-    /// Helper function that opens a connection to the codelab database.
-    ///
-    /// The connection is read-only unless <paramref name="writable"/> is true.
-    /// Neither mode creates a missing database, and checking the path first
-    /// gives a clear error when the database has not been created yet, instead
-    /// of a generic SQLite "unable to open" error.
+    /// Open a connection to the codelab database, read-only unless
+    /// <paramref name="writable"/> is true. Neither mode creates the database, so
+    /// a missing file fails with a clear message rather than SQLite's generic error.
     /// </summary>
     public static async Task<SqliteConnection> OpenDatabaseAsync(bool writable = false)
     {
