@@ -1,0 +1,30 @@
+{
+  "name": "webhooks-codelab-typescript",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TypeScript version of the webhooks codelab",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "create-db": "node --import tsx utils/createSqliteDb.ts",
+    "deploy-workflow": "node --import tsx deployWaitForWebhookWorkflow.ts",
+    "serve-agent": "node --import tsx serveWebhookAgent.ts",
+    "send-webhook": "node --import tsx sendWebhookPayload.ts",
+    "query-db": "node --import tsx utils/querySqliteDb.ts",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@io-orkes/conductor-javascript": "4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.0",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "fsevents": false
+  }
+}

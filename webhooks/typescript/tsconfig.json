@@ -1,0 +1,26 @@
+{
+  // The type-checking options that `tsc --init` recommends. tsx runs the code without checking its
+  // types, so `npm run typecheck` runs tsc for that.
+  "compilerOptions": {
+    // Node.js 24 supports every ES2024 feature.
+    "target": "es2024",
+    "module": "nodenext",
+    "moduleDetection": "force",
+    "types": ["node"],
+    "noEmit": true,
+    // Lets imports name the .ts files they load, for example "./settings.ts".
+    "allowImportingTsExtensions": true,
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+    // Keeps every import that isn't marked `import type`. Without it, tsx drops an import whose
+    // names look unused, such as the one that registers the workers' @worker methods.
+    "verbatimModuleSyntax": true,
+    // Checks that imports such as `import "./utils/workers.ts"` name a file that exists.
+    "noUncheckedSideEffectImports": true,
+    "isolatedModules": true,
+    "skipLibCheck": true
+  }
+}

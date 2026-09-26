@@ -211,3 +211,6 @@ obj/
 .classpath
 .project
 .settings/
+
+# Node.js dependencies, installed by npm install
+node_modules/
