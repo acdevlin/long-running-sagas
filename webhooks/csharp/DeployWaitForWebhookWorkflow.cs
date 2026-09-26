@@ -259,7 +259,8 @@ public static class DeployWaitForWebhookWorkflow
             Console.WriteLine($"{WaitTaskRef} is ready");
             Console.WriteLine(
                 "Before sending the webhook, start the agent tool workers with " +
-                "`dotnet run -- serve-agent`.");
+                "`dotnet run -- serve-agent`, or restart them if you've changed " +
+                "the code since they started.");
             Console.WriteLine($"Webhook URL: {Settings.Current.WebhookEndpointUrl}");
         }
         catch (Exception error) when (error is FileNotFoundException or InvalidOperationException

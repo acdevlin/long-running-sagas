@@ -198,7 +198,8 @@ public final class DeployWaitForWebhookWorkflow {
             System.out.println(WAIT_TASK_REF + " is ready");
             System.out.println(
                     "Before sending the webhook, start the agent tool workers with "
-                            + "`./gradlew serve-agent`.");
+                            + "`./gradlew serve-agent`, or restart them if you've changed the "
+                            + "code since they started.");
             System.out.println("Webhook URL: " + settings.webhookEndpointUrl());
             return 0;
         } finally {

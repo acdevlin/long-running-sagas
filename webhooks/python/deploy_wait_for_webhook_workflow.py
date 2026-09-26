@@ -264,7 +264,8 @@ def main() -> int:
         print(f"{WAIT_TASK_REF} is ready")
         print(
             "Before sending the webhook, start the agent tool workers with "
-            "`python serve_webhook_agent.py`."
+            "`python serve_webhook_agent.py`, or restart them if you've changed "
+            "the code since they started."
         )
         print(f"Webhook URL: {settings.webhook_endpoint_url}")
     except (FileNotFoundError, RuntimeError, TimeoutError, sqlite3.Error) as error:
