@@ -6,6 +6,7 @@
  * callback; the serve-agent step runs the local tools needed after it resumes.
  */
 
+import { DatabaseSync } from "node:sqlite";
 import { setTimeout as sleep } from "node:timers/promises";
 import {
   ConductorWorkflow,
@@ -19,6 +20,7 @@ import {
 import { AgentRuntime } from "@io-orkes/conductor-javascript/agents";
 import { settings } from "./settings.ts";
 import { agentTask } from "./utils/agentTask.ts";
+import { DATABASE_PATH } from "./utils/querySqliteDb.ts";
 import { waitForWebhookTask } from "./utils/waitForWebhookTask.ts";
 import { webhookAgent } from "./utils/webhookAgent.ts";
 // Registers the @worker methods in this file, which the TaskHandler in main then runs.
@@ -106,7 +108,7 @@ function startWorkflow(workflowExecutor: WorkflowExecutor): Promise<string> {
 async function waitUntilWebhookReady(
   workflowExecutor: WorkflowExecutor,
   workflowId: string,
-): Promise<void> {
+): Promise<Workflow> {
   // Unlike Date.now(), performance.now() is unaffected by changes to the system clock.
   const deadline = performance.now() + READINESS_TIMEOUT_MS;
 
@@ -115,9 +117,7 @@ async function waitUntilWebhookReady(
 
     const waitTask = execution.tasks?.find((task) => task.referenceTaskName === WAIT_TASK_REF);
     if (waitTask?.status === "IN_PROGRESS") {
-      // Exercise 1: Return this execution, with its tasks, so the caller can read every
-      // send_email output (change the return type to Promise<Workflow>).
-      return;
+      return execution;
     }
 
     if (TERMINAL_STATUSES.has(execution.status)) {
@@ -130,6 +130,35 @@ async function waitUntilWebhookReady(
   throw new Error(
     `Workflow did not reach ${WAIT_TASK_REF} within ${READINESS_TIMEOUT_MS / 1000} seconds`,
   );
+}
+
+/** Insert all completed email outputs in one database transaction. */
+function storeEmailOutputs(execution: Workflow): number {
+  const emails = (execution.tasks ?? [])
+    .filter((task) => task.taskDefName === "send_email" && task.status === "COMPLETED")
+    .map((task) => task.outputData as { sent_time: number; subject: string; recipients: string });
+
+  const database = new DatabaseSync(DATABASE_PATH);
+  try {
+    const insert = database.prepare(
+      "INSERT INTO emails (sent_time, subject, recipients) VALUES (?, ?, ?)",
+    );
+    // Use a single DB transaction to avoid partial insert failures.
+    database.exec("BEGIN");
+    try {
+      for (const email of emails) {
+        insert.run(email.sent_time, email.subject, email.recipients);
+      }
+      database.exec("COMMIT");
+    } catch (error) {
+      // SQLite rolls back by itself after some errors, and a second ROLLBACK would hide them.
+      if (database.isTransaction) database.exec("ROLLBACK");
+      throw error;
+    }
+  } finally {
+    database.close();
+  }
+  return emails.length;
 }
 
 async function main(): Promise<void> {
@@ -150,10 +179,9 @@ async function main(): Promise<void> {
     const workflowId = await startWorkflow(workflowExecutor);
     console.log(`Workflow URL: ${settings.serverBaseUrl}/execution/${workflowId}`);
 
-    await waitUntilWebhookReady(workflowExecutor, workflowId);
-    // Exercise 1: Store a row in DATABASE_PATH (utils/querySqliteDb.ts) for each completed
-    // send_email task's outputData, matching on taskDefName: each task's referenceTaskName is
-    // unique from Exercise 2 on.
+    const execution = await waitUntilWebhookReady(workflowExecutor, workflowId);
+    const storedCount = storeEmailOutputs(execution);
+    console.log(`Stored ${storedCount} email record(s) in ${DATABASE_PATH}`);
     console.log(`${WAIT_TASK_REF} is ready`);
     console.log(
       "Before sending the webhook, start the agent tool workers with " +

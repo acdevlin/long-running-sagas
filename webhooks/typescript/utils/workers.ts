@@ -32,8 +32,9 @@ export class Workers {
       body: string;
     };
     console.log(`Sending email\nTo: ${recipients}\nSubject: ${subject}\nBody: ${body}`);
-    // Exercise 1: Return this email's fields for the emails table as outputData, with sent_time
-    // as a Unix timestamp in seconds.
-    return { status: "COMPLETED" };
+    return {
+      status: "COMPLETED",
+      outputData: { sent_time: Math.floor(Date.now() / 1000), subject, recipients },
+    };
   }
 }
