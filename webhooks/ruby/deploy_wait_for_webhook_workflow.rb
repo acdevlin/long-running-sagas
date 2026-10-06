@@ -8,9 +8,11 @@
 
 require 'conductor'
 require 'conductor/agents'
+require 'sqlite3'
 
 require_relative 'settings'
 require_relative 'utils/agent_task'
+require_relative 'utils/query_sqlite_db'
 require_relative 'utils/wait_for_webhook_task'
 require_relative 'utils/webhook_agent'
 # Registers the worker_task methods in this file, which the TaskHandler in main then runs.
@@ -103,11 +105,7 @@ def wait_until_webhook_ready(workflow_executor, workflow_id)
     execution = workflow_executor.get_workflow(workflow_id, include_tasks: true)
 
     wait_task = (execution.tasks || []).find { |task| task.reference_task_name == WAIT_TASK_REF }
-    if wait_task&.status == 'IN_PROGRESS'
-      # Exercise 1: Return this execution, with its tasks, so the caller can read every
-      # completed send_email output.
-      return nil
-    end
+    return execution if wait_task&.status == 'IN_PROGRESS'
 
     raise "Workflow entered terminal status #{execution.status}" if execution.terminal?
 
@@ -115,6 +113,26 @@ def wait_until_webhook_ready(workflow_executor, workflow_id)
   end
 
   raise "Workflow did not reach #{WAIT_TASK_REF} within #{READINESS_TIMEOUT_SECONDS} seconds"
+end
+
+# Insert all completed email outputs in one database transaction.
+def store_email_outputs(execution)
+  emails = execution.tasks.filter_map do |task|
+    task.output_data if task.task_def_name == 'send_email' && task.completed?
+  end
+
+  SQLite3::Database.open(QuerySqliteDb::DATABASE_PATH) do |database|
+    # Use a single DB transaction to avoid partial insert failures.
+    database.transaction do
+      emails.each do |email|
+        database.execute(
+          'INSERT INTO emails (sent_time, subject, recipients) VALUES (?, ?, ?)',
+          [email['sent_time'], email['subject'], email['recipients']]
+        )
+      end
+    end
+  end
+  emails.size
 end
 
 def main
@@ -135,10 +153,9 @@ def main
     workflow_id = start_workflow(workflow_executor)
     puts "Workflow URL: #{SETTINGS.server_base_url}/execution/#{workflow_id}"
 
-    wait_until_webhook_ready(workflow_executor, workflow_id)
-    # Exercise 1: Store a database row for each completed send_email task's
-    # output_data. Match tasks on task_def_name, not reference_task_name, which
-    # Exercise 2 makes unique per email.
+    execution = wait_until_webhook_ready(workflow_executor, workflow_id)
+    stored_count = store_email_outputs(execution)
+    puts "Stored #{stored_count} email record(s) in #{QuerySqliteDb::DATABASE_PATH}"
     puts "#{WAIT_TASK_REF} is ready"
     puts 'Before sending the webhook, start the agent tool workers with ' \
          '`bundle exec ruby serve_webhook_agent.rb`, or restart them if you\'ve changed ' \

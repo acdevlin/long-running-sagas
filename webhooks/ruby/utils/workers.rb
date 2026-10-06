@@ -25,8 +25,6 @@ module Workers
   # Simulate sending an email.
   def self.send_email(recipients:, subject:, body:)
     puts "Sending email\nTo: #{recipients}\nSubject: #{subject}\nBody: #{body}"
-    # Exercise 1: Return this email's fields for the emails table as a Hash, with sent_time as a
-    # Unix timestamp in seconds.
-    nil
+    { 'sent_time' => Time.now.to_i, 'subject' => subject, 'recipients' => recipients }
   end
 end
