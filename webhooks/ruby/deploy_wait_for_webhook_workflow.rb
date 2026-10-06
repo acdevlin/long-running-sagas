@@ -12,6 +12,7 @@ require 'sqlite3'
 
 require_relative 'settings'
 require_relative 'utils/agent_task'
+require_relative 'utils/dynamic_fork_task'
 require_relative 'utils/query_sqlite_db'
 require_relative 'utils/wait_for_webhook_task'
 require_relative 'utils/webhook_agent'
@@ -37,16 +38,10 @@ def build_workflow
     version: WORKFLOW_VERSION,
     description: "Durable wait-for-webhook example (registered from #{CODELAB_LANGUAGE})"
   ) do
-    # Exercise 2: Replace this with one get_user_emails task that resolves every address in
-    # wf[:user_ids], so the number of emails is decided at runtime. Pass it the subject and body
-    # as well, for the forked send_email tasks.
-    get_email_task = simple(:get_user_email, user_id: wf[:user_id])
-
-    # Exercise 2: Remove this task. The DYNAMIC_FORK task from utils/dynamic_fork_task.rb, added
-    # below, sends the emails instead.
+    # Builds every send_email task for the fork, so it takes the subject and body too.
     simple(
-      :send_email,
-      recipients: get_email_task[:result],
+      :get_user_emails,
+      user_ids: wf[:user_ids],
       subject: "Hello from #{CODELAB_LANGUAGE}",
       body: "Sent by the #{CODELAB_LANGUAGE} version of the webhooks codelab."
     )
@@ -59,6 +54,8 @@ def build_workflow
   # for example because no webhook arrives. ALERT_ONLY would let it keep running.
   definition.timeout_seconds = WORKFLOW_TIMEOUT_SECONDS
   definition.timeout_policy = Conductor::Workflow::TimeoutPolicy::TIME_OUT_WORKFLOW
+  # Declares the input that every execution of the workflow needs.
+  definition.input_parameters = ['user_ids']
 
   webhook_wait = WaitForWebhookTask.build(
     WAIT_TASK_REF,
@@ -67,9 +64,8 @@ def build_workflow
       # payloads sent by this language's send-webhook step.
       "$['language']" => Settings::LANGUAGE,
       "$['type']" => 'customer',
-      # Exercise 2: Change to 'user_ids'. Be sure the payload sent by
-      # send_webhook_payload.rb matches the key you use here.
-      "$['user_id']" => '${workflow.input.user_id}'
+      # Only resume for a webhook about the same users this execution emailed.
+      "$['user_ids']" => '${workflow.input.user_ids}'
     }
   )
 
@@ -79,10 +75,19 @@ def build_workflow
     prompt: "${#{WAIT_TASK_REF}.output.agent_input}"
   )
 
+  # The SDK's dynamic_fork doesn't set this task up the way the server expects, and its builder
+  # has no JOIN task, so both are added to the definition below, before webhook_wait.
+  send_emails_fork = DynamicForkTask.build(
+    'send_emails_fork',
+    tasks: "${get_user_emails_ref.output.#{Workers::DYNAMIC_TASKS_PARAM}}",
+    tasks_inputs: "${get_user_emails_ref.output.#{Workers::DYNAMIC_TASKS_INPUTS_PARAM}}"
+  )
+  # Waits for every branch of the fork; the server fills in its empty join_on list at runtime.
+  send_emails_join = DynamicForkTask.join('send_emails_join')
+
   # The SDK's workflow builder has no AGENT task, and no way to add one, so the tasks from
   # WAIT_FOR_WEBHOOK onward follow the builder's own tasks in the definition it built.
-  # Exercise 2: Add the DYNAMIC_FORK and JOIN tasks here, before webhook_wait.
-  definition.tasks.push(webhook_wait, agent_task)
+  definition.tasks.push(send_emails_fork, send_emails_join, webhook_wait, agent_task)
   definition
 end
 
@@ -91,7 +96,7 @@ def start_workflow(workflow_executor)
   request = Conductor::Http::Models::StartWorkflowRequest.new(
     name: WORKFLOW_NAME,
     version: WORKFLOW_VERSION,
-    input: { 'user_id' => Settings::USER_ID }
+    input: { 'user_ids' => Settings::USER_IDS }
   )
   workflow_executor.start_workflow(request)
 end
@@ -118,7 +123,7 @@ end
 # Insert all completed email outputs in one database transaction.
 def store_email_outputs(execution)
   emails = execution.tasks.filter_map do |task|
-    task.output_data if task.task_def_name == 'send_email' && task.completed?
+    task.output_data if task.task_def_name == Workers::SEND_EMAIL_TASK_NAME && task.completed?
   end
 
   SQLite3::Database.open(QuerySqliteDb::DATABASE_PATH) do |database|

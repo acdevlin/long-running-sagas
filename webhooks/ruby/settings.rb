@@ -24,11 +24,10 @@ class Settings
   # payload, so every language version can share one webhook.
   LANGUAGE = 'ruby'
 
-  # Exercise 2: Replace USER_ID with a list of user IDs, such as USER_IDS, so that the workflow
-  # sends an email to each user ID in the list.
+  # The workflow sends an email to each user ID in this list.
   # Exercise 3: Repeat one user ID so the agent has a clear most-active
   # recipient to identify from the stored email activity.
-  USER_ID = 'user_12345'
+  USER_IDS = %w[alex user_1 user_2 user_555].freeze
 
   attr_reader :conductor_server_url, :llm_model, :integration_name, :webhook_id, :source_header
 
