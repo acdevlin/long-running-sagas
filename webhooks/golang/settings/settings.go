@@ -25,10 +25,9 @@ import (
 // payload, so every language version can share one webhook.
 const Language = "golang"
 
-// The workflow sends an email to each user ID in this list.
-// Exercise 3: Repeat one user ID so the agent has a clear most-active
-// recipient to identify from the stored email activity.
-var UserIDs = []string{"alex", "user_1", "user_2", "user_555"}
+// The workflow sends an email to each user ID in this list. Repeating "alex" gives the
+// agent a clear most-active recipient to identify from the stored email activity.
+var UserIDs = []string{"alex", "alex", "alex", "user_1", "user_2", "user_555"}
 
 // Settings holds the account-specific values, read from the shell or .env.
 type Settings struct {

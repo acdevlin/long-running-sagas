@@ -46,9 +46,6 @@ func openReadOnlyDatabase() (*sql.DB, error) {
 	return sql.Open("sqlite", "file:"+filepath.ToSlash(DatabasePath)+"?mode=ro")
 }
 
-// Exercise 3: Use the recipient argument in get_recipient_email_history to
-// retrieve only the selected recipient's records.
-
 // FetchEmails returns the stored emails in insertion order. Unless recipient is empty, it returns
 // only the emails sent to that recipient.
 func FetchEmails(recipient string) ([]Email, error) {
@@ -86,9 +83,6 @@ func FetchEmails(recipient string) ([]Email, error) {
 	}
 	return emails, rows.Err()
 }
-
-// Exercise 3: Use this result in summarize_email_activity to calculate
-// the total email count and return the activity for each recipient.
 
 // FetchEmailActivity returns the number of emails sent to each recipient, ordered by activity.
 func FetchEmailActivity() ([]EmailActivity, error) {
