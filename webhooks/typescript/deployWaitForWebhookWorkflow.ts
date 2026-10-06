@@ -13,6 +13,7 @@ import {
   TaskHandler,
   WorkflowExecutor,
   createConductorClient,
+  joinTask,
   simpleTask,
   type Workflow,
   type WorkflowTask,
@@ -20,11 +21,16 @@ import {
 import { AgentRuntime } from "@io-orkes/conductor-javascript/agents";
 import { settings } from "./settings.ts";
 import { agentTask } from "./utils/agentTask.ts";
+import { dynamicForkTask } from "./utils/dynamicForkTask.ts";
 import { DATABASE_PATH } from "./utils/querySqliteDb.ts";
 import { waitForWebhookTask } from "./utils/waitForWebhookTask.ts";
 import { webhookAgent } from "./utils/webhookAgent.ts";
-// Registers the @worker methods in this file, which the TaskHandler in main then runs.
-import "./utils/workers.ts";
+// Also registers the @worker methods in this file, which the TaskHandler in main then runs.
+import {
+  DYNAMIC_TASKS_INPUTS_PARAM,
+  DYNAMIC_TASKS_PARAM,
+  SEND_EMAIL_TASK_NAME,
+} from "./utils/workers.ts";
 
 const WORKFLOW_NAME = `wait_for_webhook_demo_${settings.language}`;
 const WORKFLOW_VERSION = 1;
@@ -56,32 +62,31 @@ function buildWorkflow(workflowExecutor: WorkflowExecutor): ConductorWorkflow {
     // Mark the execution TIMED_OUT if it runs longer than WORKFLOW_TIMEOUT_SECONDS,
     // for example because no webhook arrives. ALERT_ONLY would let it keep running.
     .timeoutPolicy("TIME_OUT_WF")
-    .timeoutSeconds(WORKFLOW_TIMEOUT_SECONDS);
+    .timeoutSeconds(WORKFLOW_TIMEOUT_SECONDS)
+    .inputParameters(["user_ids"]);
 
-  // Exercise 2: Replace this with one get_user_emails task that resolves every address in
-  // workflow.input("user_ids"), so the number of emails is decided at runtime. Pass it the
-  // subject and body as well, for the forked send_email tasks.
-  const getEmailTask = simpleTask("get_user_email_ref", "get_user_email", {
-    user_id: workflow.input("user_id"),
-  });
-
-  // Exercise 2: Send the emails with utils/dynamicForkTask.ts (the SDK's dynamicForkTask can't
-  // use tasks chosen at runtime), then add joinTask(referenceName, []) straight after it, so it
-  // waits for every branch.
-  const sendEmailTask = simpleTask("send_email_ref", "send_email", {
-    recipients: taskOutput(getEmailTask, "result"),
+  // Builds every send_email task for the fork, so it takes the subject and body too.
+  const getEmailsTask = simpleTask("get_user_emails_ref", "get_user_emails", {
+    user_ids: workflow.input("user_ids"),
     subject: `Hello from ${CODELAB_LANGUAGE}`,
     body: `Sent by the ${CODELAB_LANGUAGE} version of the webhooks codelab.`,
   });
+
+  const sendEmailsFork = dynamicForkTask(
+    "send_emails_fork",
+    taskOutput(getEmailsTask, DYNAMIC_TASKS_PARAM),
+    taskOutput(getEmailsTask, DYNAMIC_TASKS_INPUTS_PARAM),
+  );
+  // Waits for every branch of the fork; the server fills in its empty joinOn list at runtime.
+  const sendEmailsJoin = joinTask("send_emails_join", []);
 
   const webhookWait = waitForWebhookTask(WAIT_TASK_REF, {
     // Every language version shares one webhook, so only match
     // payloads sent by this language's send-webhook step.
     "$['language']": settings.language,
     "$['type']": "customer",
-    // Exercise 2: Change to 'user_ids'. Be sure the payload sent by
-    // sendWebhookPayload.ts matches the key you use here.
-    "$['user_id']": workflow.input("user_id"),
+    // Only resume for a webhook about the same users this execution emailed.
+    "$['user_ids']": workflow.input("user_ids"),
   });
 
   const invokeAgentTask = agentTask(
@@ -91,7 +96,7 @@ function buildWorkflow(workflowExecutor: WorkflowExecutor): ConductorWorkflow {
   );
 
   return workflow
-    .add([getEmailTask, sendEmailTask, webhookWait, invokeAgentTask])
+    .add([getEmailsTask, sendEmailsFork, sendEmailsJoin, webhookWait, invokeAgentTask])
     .outputParameter("agent_response", taskOutput(invokeAgentTask, "text"));
 }
 
@@ -100,7 +105,7 @@ function startWorkflow(workflowExecutor: WorkflowExecutor): Promise<string> {
   return workflowExecutor.startWorkflow({
     name: WORKFLOW_NAME,
     version: WORKFLOW_VERSION,
-    input: { user_id: settings.userId },
+    input: { user_ids: settings.userIds },
   });
 }
 
@@ -135,7 +140,7 @@ async function waitUntilWebhookReady(
 /** Insert all completed email outputs in one database transaction. */
 function storeEmailOutputs(execution: Workflow): number {
   const emails = (execution.tasks ?? [])
-    .filter((task) => task.taskDefName === "send_email" && task.status === "COMPLETED")
+    .filter((task) => task.taskDefName === SEND_EMAIL_TASK_NAME && task.status === "COMPLETED")
     .map((task) => task.outputData as { sent_time: number; subject: string; recipients: string });
 
   const database = new DatabaseSync(DATABASE_PATH);

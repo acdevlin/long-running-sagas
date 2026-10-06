@@ -4,9 +4,8 @@ import { settings } from "./settings.ts";
 
 async function main(): Promise<void> {
   const payload = {
-    // Exercise 2: Send user_ids instead, the same list as the workflow's input,
-    // to match the WAIT_FOR_WEBHOOK task's rule in the deploy-workflow step.
-    user_id: settings.userId,
+    // The same list as the workflow's input, which the WAIT_FOR_WEBHOOK task matches on.
+    user_ids: settings.userIds,
     type: "customer",
     // Exercise 3: Replace this prompt with a request to summarize stored email
     // activity, inspect the busiest recipient's history, and return a digest.

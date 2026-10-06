@@ -43,11 +43,10 @@ class Settings {
   readonly webhookId = read("WEBHOOK_ID", "your_webhook_id_here");
   // Set WEBHOOK_SOURCE_HEADER in .env.
   readonly sourceHeader = read("WEBHOOK_SOURCE_HEADER", "your_source_header_here");
-  // Exercise 2: Replace userId with a list of user IDs, such as userIds, so that the workflow
-  // sends an email to each user ID in the list.
+  // The workflow sends an email to each user ID in this list.
   // Exercise 3: Repeat one user ID so the agent has a clear most-active
   // recipient to identify from the stored email activity.
-  readonly userId = "user_12345";
+  readonly userIds: readonly string[] = ["alex", "user_1", "user_2", "user_555"];
 
   /** Conductor cluster URL without its /api suffix, shared by the UI and webhooks. */
   get serverBaseUrl(): string {
