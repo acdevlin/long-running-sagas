@@ -19,10 +19,9 @@ use anyhow::{Context, Result};
 /// so every language version can share one webhook.
 pub const LANGUAGE: &str = "rust";
 
-/// The workflow sends an email to each user ID in this list.
-// Exercise 3: Repeat one user ID so the agent has a clear most-active
-// recipient to identify from the stored email activity.
-pub const USER_IDS: &[&str] = &["alex", "user_1", "user_2", "user_555"];
+/// The workflow sends an email to each user ID in this list. Repeating "alex" gives the agent a
+/// clear most-active recipient to identify from the stored email activity.
+pub const USER_IDS: &[&str] = &["alex", "alex", "alex", "user_1", "user_2", "user_555"];
 
 /// The `.env` file at the repository root, two folders above this project's `Cargo.toml`.
 const ENV_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../.env");

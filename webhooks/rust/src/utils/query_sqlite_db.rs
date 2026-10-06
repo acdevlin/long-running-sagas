@@ -43,8 +43,6 @@ fn open_read_only_database() -> Result<Connection> {
     )?)
 }
 
-// Exercise 3: Use the recipient argument in get_recipient_email_history to
-// retrieve only the selected recipient's records.
 /// Return the stored emails in insertion order, or only those sent to `recipient` if it is given.
 pub fn fetch_emails(recipient: Option<&str>) -> Result<Vec<Email>> {
     let mut query = String::from(
@@ -72,8 +70,6 @@ pub fn fetch_emails(recipient: Option<&str>) -> Result<Vec<Email>> {
     Ok(emails.collect::<rusqlite::Result<_>>()?)
 }
 
-// Exercise 3: Use this result in summarize_email_activity to calculate
-// the total email count and return the activity for each recipient.
 /// Return the number of emails sent to each recipient, ordered by activity.
 pub fn fetch_email_activity() -> Result<Vec<EmailActivity>> {
     let query = "
