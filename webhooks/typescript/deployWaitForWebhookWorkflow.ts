@@ -42,7 +42,10 @@ const TERMINAL_STATUSES: ReadonlySet<Workflow["status"]> = new Set([
 // email this version sends, so you can tell the language versions apart.
 const CODELAB_LANGUAGE = "TypeScript";
 
-/** Expression for part of a task's output, for example "${get_user_email_ref.output.result}". */
+/**
+ * Expression for part of a task's output, for example
+ * "${wait_for_webhook_ref.output.agent_input}".
+ */
 function taskOutput(task: WorkflowTask, jsonPath: string): string {
   return `\${${task.taskReferenceName}.output.${jsonPath}}`;
 }

@@ -79,7 +79,7 @@ that exercise.
   `DYNAMIC_FORK` task, and the SDK's `joinTask` for the `JOIN` after it. To pass
   part of one task's output to another, use the **deploy-workflow** step's
   `taskOutput` function, which builds an expression such as
-  `${get_user_email_ref.output.result}`.
+  `${wait_for_webhook_ref.output.agent_input}`.
 - **Exercise 3:** Create each agent tool with the `tool` function from
   `@io-orkes/conductor-javascript/agents`. Pass it an async function that takes
   the tool's arguments as one object, then its `name`, its `description` and an
