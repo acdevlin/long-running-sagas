@@ -32,7 +32,8 @@ public final class Main {
         if (step == null) {
             System.err.println("Usage: ./gradlew <" + String.join("|", steps.keySet()) + ">");
             System.exit(1);
+        } else {
+            System.exit(step.run());
         }
-        System.exit(step.run());
     }
 }

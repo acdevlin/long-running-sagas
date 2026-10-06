@@ -147,7 +147,7 @@ public final class DeployWaitForWebhookWorkflow {
 
         try {
             // Starts polling for the tasks of every @WorkerTask method in Workers.
-            workflowExecutor.initWorkersFromInstances(List.of(new Workers()));
+            workflowExecutor.initWorkersFromInstances(List.<Object>of(new Workers()));
 
             // Register the agent that the workflow's AGENT task runs. The runtime gets a client
             // of its own, because closing the runtime also shuts down the client it was given.
