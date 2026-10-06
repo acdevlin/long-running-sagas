@@ -21,6 +21,7 @@ and where to find each part of the code:
 - [C#](csharp/README.md)
 - [Java](java/README.md)
 - [Go](golang/README.md)
+- [TypeScript](typescript/README.md)
 
 Every language version provides the same five steps, which this README refers
 to by name:
