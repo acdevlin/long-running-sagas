@@ -1,0 +1,18 @@
+# frozen_string_literal: true
+
+# Installed by: bundle install
+#
+# Only direct dependencies are listed here; Bundler resolves the rest and records every version in
+# Gemfile.lock.
+
+source 'https://rubygems.org'
+
+ruby '>= 3.3'
+
+gem 'conductor_ruby', '0.1.1'
+gem 'dotenv', '3.2.0'
+gem 'sqlite3', '2.9.6'
+
+# The Conductor SDK requires base64 without listing it as a dependency. It left Ruby's standard
+# library in Ruby 3.4, so it must be installed as a gem.
+gem 'base64', '0.3.0'

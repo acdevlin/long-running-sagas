@@ -218,3 +218,8 @@ node_modules/
 # Rust build output, written by Cargo, and rustfmt backup files
 target/
 **/*.rs.bk
+
+# Bundler's local settings, and gems installed into a Ruby project with
+# `bundle config set --local path vendor/bundle`
+.bundle/
+**/vendor/bundle/
