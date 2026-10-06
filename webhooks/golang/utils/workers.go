@@ -14,27 +14,40 @@ import (
 // TaskRunner to poll.
 func Workers() []worker.Worker {
 	return []worker.Worker{
-		// Exercise 2: Register getUserEmails for "get_user_emails" instead.
-		worker.NewSimpleTypedWorker("get_user_email", getUserEmail),
-		// Exercise 2: Pass worker.WithBatchSize, which is 1 by default, so this worker sends the
-		// forked emails in parallel.
-		worker.NewSimpleTypedWorker("send_email", sendEmail),
+		worker.NewSimpleTypedWorker("get_user_emails", getUserEmails),
+		// A batch size above the default of 1 lets this worker send the forked emails in parallel.
+		worker.NewSimpleTypedWorker("send_email", sendEmail, worker.WithBatchSize(10)),
 	}
 }
 
-// getUserEmailInput is the input of a get_user_email task. The SDK fills each field from the
+// getUserEmailsInput is the input of a get_user_emails task. The SDK fills each field from the
 // input parameter named in its json tag.
-type getUserEmailInput struct {
-	UserID string `json:"user_id"`
+type getUserEmailsInput struct {
+	UserIDs []string `json:"user_ids"`
+	Subject string   `json:"subject"`
+	Body    string   `json:"body"`
 }
 
-// Exercise 2: Change to getUserEmails, taking a list of user IDs. Return the fork's send_email
-// tasks under "forkedTasks", each of type "SIMPLE" with a unique taskReferenceName (Exercise 3
-// repeats a user ID), and under "forkedTasksInputs" a map from each name to that task's input.
-
-// getUserEmail returns the email address associated with a user, as the task output "result".
-func getUserEmail(_ context.Context, in getUserEmailInput) (map[string]any, error) {
-	return map[string]any{"result": in.UserID + "@example.com"}, nil
+// getUserEmails returns a send_email task for each user's email address, for the dynamic fork.
+func getUserEmails(_ context.Context, in getUserEmailsInput) (map[string]any, error) {
+	tasks := []map[string]any{}
+	inputs := map[string]any{}
+	for index, userID := range in.UserIDs {
+		// The index keeps each reference name unique, even when a user ID repeats.
+		referenceName := fmt.Sprintf("send_email_%d", index)
+		tasks = append(tasks, map[string]any{
+			"name":              "send_email",
+			"taskReferenceName": referenceName,
+			"type":              "SIMPLE",
+		})
+		inputs[referenceName] = map[string]any{
+			"recipients": userID + "@example.com",
+			"subject":    in.Subject,
+			"body":       in.Body,
+		}
+	}
+	// NewDynamicForkTask reads the forked tasks and their inputs from these two output keys.
+	return map[string]any{"forkedTasks": tasks, "forkedTasksInputs": inputs}, nil
 }
 
 // sendEmailInput is the input of a send_email task.

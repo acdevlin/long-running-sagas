@@ -25,11 +25,10 @@ import (
 // payload, so every language version can share one webhook.
 const Language = "golang"
 
-// Exercise 2: Replace UserID with a list of user IDs, such as UserIDs, so that the workflow sends
-// an email to each user ID in the list. A list can't be a constant, so declare it with var.
+// The workflow sends an email to each user ID in this list.
 // Exercise 3: Repeat one user ID so the agent has a clear most-active
 // recipient to identify from the stored email activity.
-const UserID = "user_12345"
+var UserIDs = []string{"alex", "user_1", "user_2", "user_555"}
 
 // Settings holds the account-specific values, read from the shell or .env.
 type Settings struct {

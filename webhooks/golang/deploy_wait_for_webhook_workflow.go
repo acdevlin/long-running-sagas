@@ -56,27 +56,22 @@ func buildWorkflow() *model.WorkflowDef {
 		// for example because no webhook arrives. ALERT_ONLY would let it keep running.
 		TimeoutPolicy(workflow.TimeOutWorkflow, workflowTimeoutSeconds)
 
-	// Exercise 2: Replace this with one get_user_emails task that resolves every address in
-	// ${workflow.input.user_ids}, so the number of emails is decided at runtime. Pass it the
-	// subject and body as well, for the forked send_email tasks.
-	getEmailTask := workflow.NewSimpleTask("get_user_email", "get_user_email_ref").
-		Input("user_id", "${workflow.input.user_id}")
-
-	// Exercise 2: Send the emails with workflow.NewDynamicForkTask(referenceName, getEmailsTask).
-	// It adds get_user_emails before itself and a JOIN after, so add only the fork to the workflow.
-	sendEmailTask := workflow.NewSimpleTask("send_email", "send_email_ref").
-		Input("recipients", getEmailTask.OutputRef("result")).
+	// Builds every send_email task for the fork, so it takes the subject and body too.
+	getEmailsTask := workflow.NewSimpleTask("get_user_emails", "get_user_emails_ref").
+		Input("user_ids", "${workflow.input.user_ids}").
 		Input("subject", "Hello from "+codelabLanguage).
 		Input("body", "Sent by the "+codelabLanguage+" version of the webhooks codelab.")
+
+	// The fork adds getEmailsTask before itself and a JOIN after, so add only the fork.
+	sendEmailsFork := workflow.NewDynamicForkTask("send_emails_fork", getEmailsTask)
 
 	webhookWait := utils.WaitForWebhookTask(waitTaskRef, map[string]any{
 		// Every language version shares one webhook, so only match
 		// payloads sent by this language's send-webhook step.
 		"$['language']": settings.Language,
 		"$['type']":     "customer",
-		// Exercise 2: Change to 'user_ids'. Be sure the payload sent by
-		// send_webhook_payload.go matches the key you use here.
-		"$['user_id']": "${workflow.input.user_id}",
+		// Only resume for a webhook about the same users this execution emailed.
+		"$['user_ids']": "${workflow.input.user_ids}",
 	})
 
 	agentTask := utils.AgentTask(
@@ -85,8 +80,7 @@ func buildWorkflow() *model.WorkflowDef {
 		taskOutput(webhookWait, "agent_input"),
 	)
 
-	wf.Add(getEmailTask).
-		Add(sendEmailTask).
+	wf.Add(sendEmailsFork).
 		OutputParameters(map[string]any{"agent_response": taskOutput(agentTask, "text")})
 
 	// The SDK's builder has no WAIT_FOR_WEBHOOK or AGENT tasks, and code outside the SDK can't add
@@ -101,7 +95,7 @@ func startWorkflow(workflowExecutor *executor.WorkflowExecutor) (string, error) 
 	return workflowExecutor.StartWorkflow(&model.StartWorkflowRequest{
 		Name:    workflowName,
 		Version: workflowVersion,
-		Input:   map[string]any{"user_id": settings.UserID},
+		Input:   map[string]any{"user_ids": settings.UserIDs},
 	})
 }
 
