@@ -214,3 +214,7 @@ obj/
 
 # Node.js dependencies, installed by npm install
 node_modules/
+
+# Rust build output, written by Cargo, and rustfmt backup files
+target/
+**/*.rs.bk
