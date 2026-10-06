@@ -9,6 +9,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -105,33 +106,70 @@ func startWorkflow(workflowExecutor *executor.WorkflowExecutor) (string, error) 
 }
 
 // waitUntilWebhookReady waits until the execution reaches its WAIT_FOR_WEBHOOK task.
-func waitUntilWebhookReady(workflowExecutor *executor.WorkflowExecutor, workflowID string) error {
+func waitUntilWebhookReady(
+	workflowExecutor *executor.WorkflowExecutor, workflowID string,
+) (*model.Workflow, error) {
 	deadline := time.Now().Add(readinessTimeout)
 
 	for time.Now().Before(deadline) {
 		execution, err := workflowExecutor.GetWorkflow(workflowID, true)
 		if err != nil {
-			return fmt.Errorf("get workflow %s: %w", workflowID, err)
+			return nil, fmt.Errorf("get workflow %s: %w", workflowID, err)
 		}
 
 		for _, task := range execution.Tasks {
 			if task.ReferenceTaskName == waitTaskRef && task.Status == model.InProgressTask {
-				// Exercise 1: Return this execution, with its tasks, so the caller can read every
-				// send_email output (change the return type to (*model.Workflow, error)).
-				return nil
+				return execution, nil
 			}
 		}
 
 		switch execution.Status {
 		case model.CompletedWorkflow, model.FailedWorkflow, model.TimedOutWorkflow,
 			model.TerminatedWorkflow:
-			return fmt.Errorf("workflow entered terminal status %s", execution.Status)
+			return nil, fmt.Errorf("workflow entered terminal status %s", execution.Status)
 		}
 
 		time.Sleep(readinessPollInterval)
 	}
 
-	return fmt.Errorf("workflow did not reach %s within %v", waitTaskRef, readinessTimeout)
+	return nil, fmt.Errorf("workflow did not reach %s within %v", waitTaskRef, readinessTimeout)
+}
+
+// storeEmailOutputs inserts every completed send_email task's output in one database transaction,
+// and returns the number of rows inserted.
+func storeEmailOutputs(execution *model.Workflow) (int, error) {
+	db, err := sql.Open("sqlite", utils.DatabasePath)
+	if err != nil {
+		return 0, err
+	}
+	defer db.Close()
+
+	// Use a single DB transaction to avoid partial insert failures. Rollback does nothing once the
+	// transaction is committed.
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	storedCount := 0
+	for _, task := range execution.GetCompletedTasks() {
+		if task.TaskDefName != "send_email" {
+			continue
+		}
+		email := task.OutputData
+		if _, err := tx.Exec(
+			"INSERT INTO emails (sent_time, subject, recipients) VALUES (?, ?, ?)",
+			int64(email["sent_time"].(float64)), email["subject"], email["recipients"],
+		); err != nil {
+			return 0, err
+		}
+		storedCount++
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return storedCount, nil
 }
 
 // deployWaitForWebhookWorkflow runs the deploy-workflow step.
@@ -173,12 +211,15 @@ func deployWaitForWebhookWorkflow() error {
 	}
 	fmt.Printf("Workflow URL: %s/execution/%s\n", cfg.ServerBaseURL(), workflowID)
 
-	if err := waitUntilWebhookReady(workflowExecutor, workflowID); err != nil {
+	execution, err := waitUntilWebhookReady(workflowExecutor, workflowID)
+	if err != nil {
 		return err
 	}
-	// Exercise 1: Store a row in utils.DatabasePath for each completed send_email task's
-	// OutputData, matching on TaskDefName: each task's ReferenceTaskName is unique from Exercise 2
-	// on. Numbers in OutputData, such as sent_time, are float64.
+	storedCount, err := storeEmailOutputs(execution)
+	if err != nil {
+		return fmt.Errorf("store email records in %s: %w", utils.DatabasePath, err)
+	}
+	fmt.Printf("Stored %d email record(s) in %s\n", storedCount, utils.DatabasePath)
 	fmt.Println(waitTaskRef + " is ready")
 	fmt.Println("Before sending the webhook, start the agent tool workers with " +
 		"`go run . serve-agent`, or restart them if you've changed the code since they started.")

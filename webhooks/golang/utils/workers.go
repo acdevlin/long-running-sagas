@@ -5,6 +5,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/conductor-sdk/conductor-go/sdk/worker"
 )
@@ -46,7 +47,9 @@ type sendEmailInput struct {
 // sendEmail simulates sending an email.
 func sendEmail(_ context.Context, in sendEmailInput) (map[string]any, error) {
 	fmt.Printf("Sending email\nTo: %s\nSubject: %s\nBody: %s\n", in.Recipients, in.Subject, in.Body)
-	// Exercise 1: Return this email's fields for the emails table, with sent_time as a Unix
-	// timestamp in seconds.
-	return nil, nil
+	return map[string]any{
+		"sent_time":  time.Now().Unix(),
+		"subject":    in.Subject,
+		"recipients": in.Recipients,
+	}, nil
 }
