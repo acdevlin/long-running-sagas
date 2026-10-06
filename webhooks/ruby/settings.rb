@@ -24,10 +24,9 @@ class Settings
   # payload, so every language version can share one webhook.
   LANGUAGE = 'ruby'
 
-  # The workflow sends an email to each user ID in this list.
-  # Exercise 3: Repeat one user ID so the agent has a clear most-active
-  # recipient to identify from the stored email activity.
-  USER_IDS = %w[alex user_1 user_2 user_555].freeze
+  # The workflow sends an email to each user ID in this list. Repeating "alex" gives the
+  # agent a clear most-active recipient to identify from the stored email activity.
+  USER_IDS = %w[alex alex alex user_1 user_2 user_555].freeze
 
   attr_reader :conductor_server_url, :llm_model, :integration_name, :webhook_id, :source_header
 

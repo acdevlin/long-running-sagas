@@ -25,8 +25,6 @@ module QuerySqliteDb
     SQLite3::Database.open(DATABASE_PATH, readonly: true, results_as_hash: true, &)
   end
 
-  # Exercise 3: Use the recipient argument in get_recipient_email_history to
-  # retrieve only the selected recipient's records.
   # Return stored emails in insertion order, optionally for one recipient.
   def self.fetch_emails(recipient: nil)
     query = +"
@@ -43,8 +41,6 @@ module QuerySqliteDb
     open_read_only_database { |database| database.execute(query, parameters) }
   end
 
-  # Exercise 3: Use this grouped result in summarize_email_activity to calculate
-  # the total email count and return the activity for each recipient.
   # Return one email-count row per recipient, ordered by activity.
   def self.fetch_email_activity
     query = "
