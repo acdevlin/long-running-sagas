@@ -26,8 +26,6 @@ function openReadOnlyDatabase(): DatabaseSync {
   return new DatabaseSync(DATABASE_PATH, { readOnly: true });
 }
 
-// Exercise 3: Use the recipient argument in get_recipient_email_history to
-// retrieve only the selected recipient's records.
 /** Return stored emails in insertion order, optionally for one recipient. */
 export function fetchEmails(recipient?: string): Row[] {
   let query = `
@@ -49,8 +47,6 @@ export function fetchEmails(recipient?: string): Row[] {
   }
 }
 
-// Exercise 3: Use these rows in summarize_email_activity to total the emails and return each
-// recipient's activity. Each row's email_count is a number, although its type is SQLOutputValue.
 /** Return one email-count row per recipient, ordered by activity. */
 export function fetchEmailActivity(): Row[] {
   const query = `
