@@ -17,6 +17,8 @@ module WebhookAgent
   # Exercise 3: After each method, declare it with tool :method_name, description: '...'. The LLM
   # reads the description to decide when and how to call the tool, and each required keyword
   # argument, such as recipient:, becomes one of the tool's parameters.
+  # Exercise 3: A tool without parameters must still accept extra keywords, as in
+  # def summarize_email_activity(**): the SDK passes it other task input, such as _createdBy.
 
   # The name the agent is deployed under, which the workflow's AGENT task refers to.
   NAME = "webhook_customer_service_#{Settings::LANGUAGE}".freeze

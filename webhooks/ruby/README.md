@@ -84,8 +84,9 @@ that exercise.
   then declare it with `tool :method_name, description: '...'`. Inside the
   module, `self[:method_name]` returns the declared tool for the agent's
   `tools:` list. Give each tool parameter as a required keyword argument, such
-  as `recipient:`. The query helpers return Hashes, which the agent receives as
-  JSON with their keys as they are.
+  as `recipient:`. A tool without parameters still needs a `**` parameter, as
+  in `def summarize_email_activity(**)` (see SDK Notes). The query helpers
+  return Hashes, which the agent receives as JSON with their keys as they are.
 
 ## SDK Notes
 
@@ -111,6 +112,11 @@ the code, so leave these parts as they are:
   can no longer read it. The parameter then has no type and isn't required. A
   required keyword argument, such as `recipient:`, is always marked as
   required. To give it a type too, pass `tool` an `input_schema:`.
+- **Tool inputs:** The SDK removes its own keys from a tool task's input, but
+  not keys the server adds, such as `_createdBy`. It passes those to a tool
+  without parameters as keyword arguments, so that tool fails with "wrong
+  number of arguments" unless it accepts `**`. A tool with parameters receives
+  only its parameters.
 - **Serving tools:** `AgentRuntime#serve` normally waits for Ctrl+C itself, but
   Ruby stops it with a deadlock error when the agent has no tools, as before
   Exercise 3. So the **serve-agent** step calls it with `blocking: false` and
