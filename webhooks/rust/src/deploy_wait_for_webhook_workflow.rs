@@ -21,9 +21,12 @@ use serde_json::Value;
 
 use crate::settings::{self, LANGUAGE, Settings};
 use crate::utils::agent_task::agent_task;
+use crate::utils::dynamic_fork_task::dynamic_fork_task;
 use crate::utils::query_sqlite_db::DATABASE_PATH;
 use crate::utils::webhook_agent::{WEBHOOK_AGENT_NAME, webhook_agent};
-use crate::utils::workers;
+use crate::utils::workers::{
+    self, DYNAMIC_TASKS_INPUTS_PARAM, DYNAMIC_TASKS_PARAM, SEND_EMAIL_TASK_NAME,
+};
 
 /// Named after `LANGUAGE` in settings.rs, like every language version's workflow.
 const WORKFLOW_NAME: &str = "wait_for_webhook_demo_rust";
@@ -40,30 +43,30 @@ const CODELAB_LANGUAGE: &str = "Rust";
 
 /// Build the workflow definition, as JSON, without registering or starting it.
 fn build_workflow() -> Result<Value> {
-    // Exercise 2: Replace this with one get_user_emails task that resolves every address in
-    // ${workflow.input.user_ids}, so the number of emails is decided at runtime. Pass it the
-    // subject and body as well, for the forked send_email tasks.
-    let get_email_task = WorkflowTask::simple("get_user_email", "get_user_email_ref")
-        .with_input_param("user_id", "${workflow.input.user_id}");
-
-    // Exercise 2: Send the emails with dynamic_fork_task from utils/dynamic_fork_task.rs, then
-    // add WorkflowTask::join(reference_name, vec![]) straight after it, to wait for every branch.
-    let send_email_task = WorkflowTask::simple("send_email", "send_email_ref")
-        .with_input_param("recipients", "${get_user_email_ref.output.result}")
+    // Builds every send_email task for the fork, so it takes the subject and body too.
+    let get_emails_task = WorkflowTask::simple("get_user_emails", "get_user_emails_ref")
+        .with_input_param("user_ids", "${workflow.input.user_ids}")
         .with_input_param("subject", format!("Hello from {CODELAB_LANGUAGE}"))
         .with_input_param(
             "body",
             format!("Sent by the {CODELAB_LANGUAGE} version of the webhooks codelab."),
         );
 
+    let send_emails_fork = dynamic_fork_task(
+        "send_emails_fork",
+        &format!("${{get_user_emails_ref.output.{DYNAMIC_TASKS_PARAM}}}"),
+        &format!("${{get_user_emails_ref.output.{DYNAMIC_TASKS_INPUTS_PARAM}}}"),
+    );
+    // Waits for every branch of the fork; the server fills in its empty joinOn list at runtime.
+    let send_emails_join = WorkflowTask::join("send_emails_join", vec![]);
+
     let webhook_wait = WorkflowTask::wait_for_webhook(WAIT_TASK_REF).with_matches(HashMap::from([
         // Every language version shares one webhook, so only match
         // payloads sent by this language's send-webhook step.
         ("$['language']".into(), LANGUAGE.into()),
         ("$['type']".into(), "customer".into()),
-        // Exercise 2: Change to 'user_ids'. Be sure the payload sent by
-        // send_webhook_payload.rs matches the key you use here.
-        ("$['user_id']".into(), "${workflow.input.user_id}".into()),
+        // Only resume for a webhook about the same users this execution emailed.
+        ("$['user_ids']".into(), "${workflow.input.user_ids}".into()),
     ]));
 
     let workflow = WorkflowDef::new(WORKFLOW_NAME)
@@ -74,8 +77,11 @@ fn build_workflow() -> Result<Value> {
         // Mark the execution TIMED_OUT if it runs longer than WORKFLOW_TIMEOUT_SECONDS,
         // for example because no webhook arrives. ALERT_ONLY would let it keep running.
         .with_timeout(WORKFLOW_TIMEOUT_SECONDS, WorkflowTimeoutPolicy::TimeOutWf)
-        .with_task(get_email_task)
-        .with_task(send_email_task)
+        // Declares the input that every execution of the workflow needs.
+        .with_input_parameters(vec!["user_ids".to_owned()])
+        .with_task(get_emails_task)
+        .with_task(send_emails_fork)
+        .with_task(send_emails_join)
         .with_task(webhook_wait)
         .with_output_param("agent_response", "${process_webhook_ref.output.text}");
 
@@ -97,7 +103,7 @@ fn build_workflow() -> Result<Value> {
 async fn start_workflow(workflow_client: &WorkflowClient) -> Result<String> {
     let request = StartWorkflowRequest::new(WORKFLOW_NAME)
         .with_version(WORKFLOW_VERSION)
-        .with_input_value("user_id", settings::USER_ID);
+        .with_input_value("user_ids", settings::USER_IDS);
     Ok(workflow_client.start_workflow(&request).await?)
 }
 
@@ -136,7 +142,9 @@ fn store_email_outputs(execution: &Workflow) -> Result<usize> {
     let emails: Vec<_> = execution
         .tasks
         .iter()
-        .filter(|task| task.task_def_name == "send_email" && task.status == TaskStatus::Completed)
+        .filter(|task| {
+            task.task_def_name == SEND_EMAIL_TASK_NAME && task.status == TaskStatus::Completed
+        })
         .map(|task| &task.output_data)
         .collect();
 
