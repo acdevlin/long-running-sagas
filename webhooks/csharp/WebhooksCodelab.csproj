@@ -20,4 +20,13 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
   </ItemGroup>
 
+  <!--
+    conductor-csharp 3.0.0 depends on OpenTelemetry.Api 1.15.1, which has a known
+    vulnerability (GHSA-g94r-2vxg-569j). Referencing the fixed version directly makes
+    the build use it instead.
+  -->
+  <ItemGroup>
+    <PackageReference Include="OpenTelemetry.Api" Version="1.15.3" />
+  </ItemGroup>
+
 </Project>

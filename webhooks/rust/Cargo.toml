@@ -1,0 +1,25 @@
+[package]
+name = "webhooks-codelab"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Rust version of the webhooks codelab"
+publish = false
+
+[dependencies]
+# Version 0.2.0 of the Conductor Rust SDK, the first with agents, isn't on crates.io yet, so Cargo
+# downloads it from its release tag on GitHub. The package is named conductor-sdk, but the SDK's
+# #[worker] and #[tool] macros expect it under the name conductor.
+conductor = { package = "conductor-sdk", git = "https://github.com/conductor-oss/rust-sdk", tag = "v0.2.0", features = ["agents"] }
+anyhow = "1.0.104"
+dotenvy = "0.15.7"
+# The version the SDK uses, so Cargo only builds one.
+reqwest = { version = "0.11.27", default-features = false, features = ["json", "rustls-tls"] }
+# bundled builds SQLite into the program, so your computer doesn't need its own SQLite library.
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+# The SDK's #[tool] macro needs JsonSchema from this version of schemars (Exercise 3).
+schemars = "0.8.22"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tokio = { version = "1.53.2", features = ["rt-multi-thread", "signal", "time"] }
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
