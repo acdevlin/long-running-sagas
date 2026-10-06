@@ -137,7 +137,10 @@ instead, as listed in your language's README.
    correctly, you will receive a `200` status response from the
    **send-webhook** step, your webhook will show a
    successful execution in the Orkes Conductor UI, and there will now be some
-   output in the `invoke_agent` task. After the workflow completes, stop
+   output in the `invoke_agent` task. Orkes Conductor occasionally doesn't
+   match a webhook to the waiting workflow even though it returns `200`, so if
+   the workflow is still waiting at `wait_for_webhook_ref` after a few seconds,
+   run the **send-webhook** step again. After the workflow completes, stop
    the agent tool worker process with Ctrl+C.
 
     <p align="center">
