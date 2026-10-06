@@ -1,7 +1,11 @@
 //! Worker tasks used by the webhook workflow.
 
+use std::collections::HashMap;
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use conductor::worker;
-use conductor::worker::FnWorker;
+use conductor::worker::{FnWorker, WorkerOutput};
+use serde_json::json;
 
 /// Return a worker for each task that the workflow runs, for the deploy-workflow step's
 /// `TaskHandler` to poll. `#[worker]` turns each function below into one whose name ends in
@@ -25,8 +29,15 @@ async fn get_user_email(user_id: String) -> String {
 // forked emails in parallel.
 /// Simulate sending an email.
 #[worker(name = "send_email")]
-async fn send_email(recipients: String, subject: String, body: String) {
+async fn send_email(recipients: String, subject: String, body: String) -> WorkerOutput {
     println!("Sending email\nTo: {recipients}\nSubject: {subject}\nBody: {body}");
-    // Exercise 1: Return this email's fields for the emails table, with sent_time as a Unix
-    // timestamp in seconds.
+    let sent_time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    WorkerOutput::completed(HashMap::from([
+        ("sent_time".to_owned(), json!(sent_time)),
+        ("subject".to_owned(), json!(subject)),
+        ("recipients".to_owned(), json!(recipients)),
+    ]))
 }

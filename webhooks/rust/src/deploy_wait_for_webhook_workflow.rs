@@ -13,13 +13,15 @@ use conductor::agents::{AgentDef, AgentRuntime};
 use conductor::client::{ConductorClient, WorkflowClient};
 use conductor::configuration::Configuration;
 use conductor::models::{
-    StartWorkflowRequest, TaskStatus, WorkflowDef, WorkflowTask, WorkflowTimeoutPolicy,
+    StartWorkflowRequest, TaskStatus, Workflow, WorkflowDef, WorkflowTask, WorkflowTimeoutPolicy,
 };
 use conductor::worker::TaskHandler;
+use rusqlite::{Connection, params};
 use serde_json::Value;
 
 use crate::settings::{self, LANGUAGE, Settings};
 use crate::utils::agent_task::agent_task;
+use crate::utils::query_sqlite_db::DATABASE_PATH;
 use crate::utils::webhook_agent::{WEBHOOK_AGENT_NAME, webhook_agent};
 use crate::utils::workers;
 
@@ -103,7 +105,7 @@ async fn start_workflow(workflow_client: &WorkflowClient) -> Result<String> {
 async fn wait_until_webhook_ready(
     workflow_client: &WorkflowClient,
     workflow_id: &str,
-) -> Result<()> {
+) -> Result<Workflow> {
     let deadline = Instant::now() + READINESS_TIMEOUT;
 
     while Instant::now() < deadline {
@@ -113,9 +115,7 @@ async fn wait_until_webhook_ready(
             task.reference_task_name == WAIT_TASK_REF && task.status == TaskStatus::InProgress
         });
         if waiting {
-            // Exercise 1: Return this execution, with its tasks, so the caller can read every
-            // send_email output (change the return type to Result<Workflow>).
-            return Ok(());
+            return Ok(execution);
         }
 
         if execution.is_terminal() {
@@ -129,6 +129,33 @@ async fn wait_until_webhook_ready(
         "workflow did not reach {WAIT_TASK_REF} within {} seconds",
         READINESS_TIMEOUT.as_secs()
     )
+}
+
+/// Insert all completed email outputs in one database transaction.
+fn store_email_outputs(execution: &Workflow) -> Result<usize> {
+    let emails: Vec<_> = execution
+        .tasks
+        .iter()
+        .filter(|task| task.task_def_name == "send_email" && task.status == TaskStatus::Completed)
+        .map(|task| &task.output_data)
+        .collect();
+
+    let mut connection = Connection::open(DATABASE_PATH)?;
+    // Use a single DB transaction to avoid partial insert failures. Dropping it without committing
+    // rolls it back.
+    let transaction = connection.transaction()?;
+    for email in &emails {
+        transaction.execute(
+            "INSERT INTO emails (sent_time, subject, recipients) VALUES (?1, ?2, ?3)",
+            params![
+                email.get("sent_time").and_then(Value::as_i64),
+                email.get("subject").and_then(Value::as_str),
+                email.get("recipients").and_then(Value::as_str),
+            ],
+        )?;
+    }
+    transaction.commit()?;
+    Ok(emails.len())
 }
 
 /// Run the deploy-workflow step.
@@ -174,10 +201,9 @@ async fn deploy(config: Configuration, settings: &Settings, agent: &AgentDef) ->
         settings.server_base_url()
     );
 
-    wait_until_webhook_ready(&workflow_client, &workflow_id).await?;
-    // Exercise 1: Store a row in DATABASE_PATH (utils/query_sqlite_db.rs) for each completed
-    // send_email task's output_data, matching on task_def_name: each task's reference_task_name
-    // is unique from Exercise 2 on.
+    let execution = wait_until_webhook_ready(&workflow_client, &workflow_id).await?;
+    let stored_count = store_email_outputs(&execution)?;
+    println!("Stored {stored_count} email record(s) in {DATABASE_PATH}");
     println!("{WAIT_TASK_REF} is ready");
     println!(
         "Before sending the webhook, start the agent tool workers with \
