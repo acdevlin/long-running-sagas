@@ -11,9 +11,9 @@ pub fn workers() -> Vec<FnWorker> {
     vec![get_user_email_worker(), send_email_worker()]
 }
 
-// Exercise 2: Change to "get_user_emails", taking `user_ids: Vec<String>`. Return the fork's
-// send_email tasks, each of type "SIMPLE" with a unique taskReferenceName (Exercise 3 repeats a
-// user ID), and a map from each taskReferenceName to that task's input (see dynamic_fork_task.rs).
+// Exercise 2: Change to "get_user_emails", taking `user_ids: Vec<String>`. Return a WorkerOutput
+// with the fork's send_email tasks under "dynamicTasks", each SIMPLE with a unique reference name
+// (Exercise 3 repeats a user ID), and under "dynamicTasksInputs" a map from each name to its input.
 /// Return the email address associated with a user, which `#[worker]` stores as the task output
 /// "result".
 #[worker(name = "get_user_email")]
@@ -27,6 +27,6 @@ async fn get_user_email(user_id: String) -> String {
 #[worker(name = "send_email")]
 async fn send_email(recipients: String, subject: String, body: String) {
     println!("Sending email\nTo: {recipients}\nSubject: {subject}\nBody: {body}");
-    // Exercise 1: Return this email's fields for the emails table, with sent_time as a Unix
-    // timestamp in seconds.
+    // Exercise 1: Return this email's fields for the emails table as a WorkerOutput, with
+    // sent_time as a Unix timestamp in seconds.
 }

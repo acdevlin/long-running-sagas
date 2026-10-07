@@ -119,7 +119,13 @@ async fn wait_until_webhook_ready(
         }
 
         if execution.is_terminal() {
-            bail!("workflow entered terminal status {:?}", execution.status);
+            // WorkflowStatus has no Display, so print its name as the server sends it, such as
+            // TIMED_OUT.
+            let status = serde_json::to_value(execution.status)?;
+            bail!(
+                "workflow entered terminal status {}",
+                status.as_str().unwrap_or_default()
+            );
         }
 
         tokio::time::sleep(READINESS_POLL_INTERVAL).await;

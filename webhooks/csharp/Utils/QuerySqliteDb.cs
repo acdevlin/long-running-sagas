@@ -109,7 +109,8 @@ public static class QuerySqliteDb
         if (!File.Exists(DatabasePath))
         {
             throw new FileNotFoundException(
-                $"Database not found at {DatabasePath}. Run the create-db step first.");
+                $"Database not found at {DatabasePath}. Run the create-db step " +
+                "(dotnet run -- create-db) first.");
         }
 
         // Read-only mode prevents this query helper and the agent tools that use

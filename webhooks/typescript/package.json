@@ -5,7 +5,7 @@
   "description": "TypeScript version of the webhooks codelab",
   "type": "module",
   "engines": {
-    "node": ">=24"
+    "node": ">=24.2"
   },
   "scripts": {
     "create-db": "node --import tsx utils/createSqliteDb.ts",

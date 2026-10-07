@@ -131,7 +131,8 @@ func waitUntilWebhookReady(workflowExecutor *executor.WorkflowExecutor, workflow
 		time.Sleep(readinessPollInterval)
 	}
 
-	return fmt.Errorf("workflow did not reach %s within %v", waitTaskRef, readinessTimeout)
+	return fmt.Errorf("workflow did not reach %s within %d seconds", waitTaskRef,
+		int(readinessTimeout.Seconds()))
 }
 
 // deployWaitForWebhookWorkflow runs the deploy-workflow step.

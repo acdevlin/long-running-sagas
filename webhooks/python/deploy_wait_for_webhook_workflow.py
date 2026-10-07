@@ -128,7 +128,7 @@ def wait_until_webhook_ready(workflow_client, workflow_id: str) -> None:
             # read every completed send_email output.
             return None
 
-        if execution.status in {"FAILED", "TIMED_OUT", "TERMINATED"}:
+        if execution.status in {"COMPLETED", "FAILED", "TIMED_OUT", "TERMINATED"}:
             raise RuntimeError(f"Workflow entered terminal status {execution.status}")
 
         time.sleep(POLL_INTERVAL_SECONDS)
@@ -164,9 +164,9 @@ def main() -> None:
         print(f"Workflow URL: {workflow_url}")
 
         _ = wait_until_webhook_ready(workflow_client, workflow_id)
-        # Exercise 1: Store a database row for each completed send_email task's
-        # output_data. Match tasks on task_def_name, not reference_task_name, which
-        # Exercise 2 makes unique per email.
+        # Exercise 1: Store a row in DATABASE_PATH (utils/query_sqlite_db.py) for each
+        # completed send_email task's output_data. Match tasks on task_def_name, not
+        # reference_task_name, which is unique per email from Exercise 2 on.
         print(f"{WAIT_TASK_REF} is ready")
         print(
             "Before sending the webhook, start the agent tool workers with "

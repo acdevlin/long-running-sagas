@@ -39,8 +39,9 @@ class Settings:
     webhook_id: str = "your_webhook_id_here"
     # Set WEBHOOK_SOURCE_HEADER in .env.
     source_header: str = "your_source_header_here"
-    # Exercise 2: Add more user_ids to simulate multiple email recipients.
-    # The workflow will send an email to each user_id in this list.
+    # Exercise 2: Replace user_id with a list of user IDs, such as user_ids, so that the
+    # workflow sends an email to each user ID. Use a tuple: a dataclass field can't
+    # default to a list.
     # Exercise 3: Repeat one user ID so the agent has a clear most-active
     # recipient to identify from the stored email activity.
     user_id: str = "user_12345"

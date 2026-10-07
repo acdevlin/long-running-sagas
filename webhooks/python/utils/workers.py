@@ -13,6 +13,8 @@ def get_user_email(user_id: str) -> str:
 
 
 @worker_task(task_definition_name="send_email")
+# Exercise 2: Set thread_count in @worker_task (1 by default) so that this worker sends
+# the forked emails in parallel.
 def send_email(
     recipients: str,
     subject: str,

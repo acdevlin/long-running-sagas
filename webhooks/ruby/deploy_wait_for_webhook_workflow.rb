@@ -136,9 +136,9 @@ def main
     puts "Workflow URL: #{SETTINGS.server_base_url}/execution/#{workflow_id}"
 
     wait_until_webhook_ready(workflow_executor, workflow_id)
-    # Exercise 1: Store a database row for each completed send_email task's
-    # output_data. Match tasks on task_def_name, not reference_task_name, which
-    # Exercise 2 makes unique per email.
+    # Exercise 1: Store a row in QuerySqliteDb::DATABASE_PATH for each completed send_email
+    # task's output_data. Match tasks on task_def_name, not reference_task_name, which is
+    # unique per email from Exercise 2 on.
     puts "#{WAIT_TASK_REF} is ready"
     puts 'Before sending the webhook, start the agent tool workers with ' \
          '`bundle exec ruby serve_webhook_agent.rb`, or restart them if you\'ve changed ' \

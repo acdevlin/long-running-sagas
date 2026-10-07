@@ -64,8 +64,8 @@ that exercise.
 | Helpers for the `DYNAMIC_FORK` and `JOIN` tasks                      | `utils/dynamic_fork_task.rb`          | 2         |
 | Database setup, using [`../shared/schema.sql`](../shared/schema.sql) | `utils/create_sqlite_db.rb`           |           |
 | Local database file, created by **create-db**                        | `utils/webhook_codelab_storage.db`    |           |
-| Helper that creates the `WAIT_FOR_WEBHOOK` task                      | `utils/wait_for_webhook_task.rb`      |           |
-| Helper that creates the `AGENT` task                                 | `utils/agent_task.rb`                 |           |
+| Helper for the `WAIT_FOR_WEBHOOK` task                               | `utils/wait_for_webhook_task.rb`      |           |
+| Helper for the `AGENT` task                                          | `utils/agent_task.rb`                 |           |
 
 ## Ruby Notes
 

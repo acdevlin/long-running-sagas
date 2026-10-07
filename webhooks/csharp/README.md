@@ -18,11 +18,6 @@ repository, so there is nothing to configure in this folder. It finds that file
 by searching upward from the current folder, so run every command from this
 folder.
 
-Each build warns that the `OpenTelemetry.Api` package has a known
-moderate-severity vulnerability. That package is a dependency of the Conductor
-C# SDK (`conductor-csharp`), not of the codelab's own code, and the warning
-does not stop the build.
-
 Then follow the [Preparation steps in the codelab README](../README.md#preparation)
 to configure your Orkes account and webhook.
 
@@ -30,13 +25,13 @@ to configure your Orkes account and webhook.
 
 Run every command from this folder (`webhooks/csharp`).
 
-| Step | Command |
-| --- | --- |
-| **create-db** | `dotnet run -- create-db` |
+| Step                | Command                         |
+| ------------------- | ------------------------------- |
+| **create-db**       | `dotnet run -- create-db`       |
 | **deploy-workflow** | `dotnet run -- deploy-workflow` |
-| **serve-agent** | `dotnet run -- serve-agent` |
-| **send-webhook** | `dotnet run -- send-webhook` |
-| **query-db** | `dotnet run -- query-db` |
+| **serve-agent**     | `dotnet run -- serve-agent`     |
+| **send-webhook**    | `dotnet run -- send-webhook`    |
+| **query-db**        | `dotnet run -- query-db`        |
 
 The **deploy-workflow** step registers the workflow as
 `wait_for_webhook_demo_csharp` and the agent as
@@ -48,19 +43,19 @@ you set up your webhook.
 Comments beginning with `// Exercise N:` mark each place you will change for
 that exercise.
 
-| Codelab part | File | Exercises |
-| --- | --- | --- |
-| Recipient user IDs | `Settings.cs` | 2, 3 |
-| Workflow definition, readiness check, and storing email records | `DeployWaitForWebhookWorkflow.cs` | 1, 2 |
-| `get_user_email` and `send_email` workers | `Utils/Workers.cs` | 1, 2 |
-| Webhook payload and `agent_input` | `SendWebhookPayload.cs` | 2, 3 |
-| `webhook_customer_service_csharp` agent and its tools | `Utils/WebhookAgent.cs` | 3 |
-| Read-only database queries | `Utils/QuerySqliteDb.cs` | 3 |
-| Helper for the `DYNAMIC_FORK` task | `Utils/DynamicForkTask.cs` | 2 |
-| Database setup, using [`../shared/schema.sql`](../shared/schema.sql) | `Utils/CreateSqliteDb.cs` | |
-| Local database file, created by **create-db** | `Utils/webhook_codelab_storage.db` | |
-| Adapter that adds an `AGENT` task to the workflow | `Utils/AgentTask.cs` | |
-| Step names used by `dotnet run -- <step>` | `Program.cs` | |
+| Codelab part                                                         | File                               | Exercises |
+| -------------------------------------------------------------------- | ---------------------------------- | --------- |
+| Recipient user IDs                                                   | `Settings.cs`                      | 2, 3      |
+| Workflow definition, readiness check, and storing email records      | `DeployWaitForWebhookWorkflow.cs`  | 1, 2      |
+| `get_user_email` and `send_email` workers                            | `Utils/Workers.cs`                 | 1, 2      |
+| Webhook payload and `agent_input`                                    | `SendWebhookPayload.cs`            | 2, 3      |
+| `webhook_customer_service_csharp` agent and its tools                | `Utils/WebhookAgent.cs`            | 3         |
+| Read-only database queries                                           | `Utils/QuerySqliteDb.cs`           | 3         |
+| Helper for the `DYNAMIC_FORK` task                                   | `Utils/DynamicForkTask.cs`         | 2         |
+| Database setup, using [`../shared/schema.sql`](../shared/schema.sql) | `Utils/CreateSqliteDb.cs`          |           |
+| Local database file, created by **create-db**                        | `Utils/webhook_codelab_storage.db` |           |
+| Helper for the `AGENT` task                                          | `Utils/AgentTask.cs`               |           |
+| Step names used by `dotnet run -- <step>`                            | `Program.cs`                       |           |
 
 ## C# Notes
 
@@ -69,11 +64,15 @@ that exercise.
   which the project already references, to write to the database.
   `QuerySqliteDb.DatabasePath` gives the location of the database file. Return
   each email record from `send_email` as a `Dictionary<string, object>` (see
-  [SDK Workarounds](#sdk-workarounds)).
+  [SDK Notes](#sdk-notes)).
 - **Exercise 2:** Use `DynamicForkTask` from `Utils/DynamicForkTask.cs` for the
   `DYNAMIC_FORK` task, and add the SDK's `JoinTask` straight after it when you
   call `WithTask`. Return the forked task definitions and their inputs from
-  `get_user_emails` as a `Dictionary<string, object>` too.
+  `get_user_emails` as a `Dictionary<string, object>` too. Unlike in the other
+  languages, `send_email` needs no setting to send the forked emails in
+  parallel: by default a C# worker runs the tasks from each poll at the same
+  time, taking up to twice as many tasks as your computer has processor cores,
+  and at least 2.
 - **Exercise 3:** Declare each agent tool as a public method marked with the
   `[Tool]` attribute from `Conductor.AI`, on a class you can create an instance
   of. `ToolRegistry.FromInstance` turns those methods into the list of tools for
@@ -83,11 +82,12 @@ that exercise.
   `System.Text.Json.Serialization`. Use the resulting names in the agent's
   instructions.
 
-## SDK Workarounds
+## SDK Notes
 
-This version uses version 3.0.0 of the Conductor C# SDK (`conductor-csharp`),
-which has several bugs. The code works around each one, with a comment
-explaining why, so leave these parts as they are:
+This version uses version 3.0.0 of the Conductor C# SDK (`conductor-csharp`)
+and of its agent package (`conductor-ai`). The C# SDK has several bugs. The
+code works around each one, with a comment explaining why, so leave these parts
+as they are:
 
 - **Task types:** The SDK sends each task's type in a field that the server
   only accepts for standard Conductor tasks. `DeployWaitForWebhookWorkflow.cs`
