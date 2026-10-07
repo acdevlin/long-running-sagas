@@ -24,8 +24,8 @@ Replace the server URL with your own cluster's URL if you are not using the free
 
 ## Codelabs
 
-| Codelab | Languages |
-| --- | --- |
+| Codelab                        | Languages                                                                                                                                                                                                                                             |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [Webhooks](webhooks/README.md) | [Python](webhooks/python/README.md), [C#](webhooks/csharp/README.md), [Java](webhooks/java/README.md), [Go](webhooks/golang/README.md), [TypeScript](webhooks/typescript/README.md), [Ruby](webhooks/ruby/README.md), [Rust](webhooks/rust/README.md) |
 
 ### Webhooks

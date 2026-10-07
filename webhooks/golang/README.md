@@ -58,8 +58,8 @@ that exercise.
 | Read-only database queries                                           | `utils/query_sqlite_db.go`            | 3         |
 | Database setup, using [`../shared/schema.sql`](../shared/schema.sql) | `utils/create_sqlite_db.go`           |           |
 | Local database file, created by **create-db**                        | `utils/webhook_codelab_storage.db`    |           |
-| Helper that adds a `WAIT_FOR_WEBHOOK` task to the workflow           | `utils/wait_for_webhook_task.go`      |           |
-| Helper that adds an `AGENT` task to the workflow                     | `utils/agent_task.go`                 |           |
+| Helper for the `WAIT_FOR_WEBHOOK` task                               | `utils/wait_for_webhook_task.go`      |           |
+| Helper for the `AGENT` task                                          | `utils/agent_task.go`                 |           |
 | Step names used by `go run . <step>`                                 | `main.go`                             |           |
 
 ## Go Notes

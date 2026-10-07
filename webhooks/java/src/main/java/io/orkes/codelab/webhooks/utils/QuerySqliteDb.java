@@ -132,7 +132,9 @@ public final class QuerySqliteDb {
     public static Connection openDatabase(boolean writable) throws IOException, SQLException {
         if (!Files.isRegularFile(DATABASE_PATH)) {
             throw new FileNotFoundException(
-                    "Database not found at " + DATABASE_PATH + ". Run the create-db step first.");
+                    "Database not found at "
+                            + DATABASE_PATH
+                            + ". Run the create-db step (./gradlew create-db) first.");
         }
 
         // Read-only mode prevents this query helper and the agent tools that use it from

@@ -7,7 +7,7 @@ each part of the code.
 
 ## Setup
 
-This version requires [Node.js](https://nodejs.org/) 24 or newer, which
+This version requires [Node.js](https://nodejs.org/) 24.2 or newer, which
 includes npm. Complete the
 [Setup section of the top-level README](../../README.md#setup) first. Then,
 from this folder, run `npm install` to install the packages listed in
@@ -62,8 +62,8 @@ that exercise.
 | Helper for the `DYNAMIC_FORK` task                                   | `utils/dynamicForkTask.ts`         | 2         |
 | Database setup, using [`../shared/schema.sql`](../shared/schema.sql) | `utils/createSqliteDb.ts`          |           |
 | Local database file, created by **create-db**                        | `utils/webhook_codelab_storage.db` |           |
-| Helper that adds a `WAIT_FOR_WEBHOOK` task to the workflow           | `utils/waitForWebhookTask.ts`      |           |
-| Helper that adds an `AGENT` task to the workflow                     | `utils/agentTask.ts`               |           |
+| Helper for the `WAIT_FOR_WEBHOOK` task                               | `utils/waitForWebhookTask.ts`      |           |
+| Helper for the `AGENT` task                                          | `utils/agentTask.ts`               |           |
 | Step names used by `npm run <step>`                                  | `package.json`                     |           |
 
 ## TypeScript Notes
@@ -79,7 +79,9 @@ that exercise.
   `DYNAMIC_FORK` task, and the SDK's `joinTask` for the `JOIN` after it. To pass
   part of one task's output to another, use the **deploy-workflow** step's
   `taskOutput` function, which builds an expression such as
-  `${wait_for_webhook_ref.output.agent_input}`.
+  `${wait_for_webhook_ref.output.agent_input}`. A worker runs one task at a time
+  unless you raise its `concurrency`, for example
+  `@worker({ taskDefName: "send_email", concurrency: 10 })`.
 - **Exercise 3:** Create each agent tool with the `tool` function from
   `@io-orkes/conductor-javascript/agents`. Pass it an async function that takes
   the tool's arguments as one object, then its `name`, its `description` and an

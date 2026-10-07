@@ -38,7 +38,7 @@ class Settings:
     # Set WEBHOOK_ID in .env.
     webhook_id: str = "your_webhook_id_here"
     # Set WEBHOOK_SOURCE_HEADER in .env.
-    source_header: str = "wait-for-webhook-demo-value"
+    source_header: str = "your_source_header_here"
     # A tuple keeps the configured recipients immutable; request builders convert
     # it to a list only when producing a JSON array for Conductor.
     user_ids: tuple[str, ...] = (

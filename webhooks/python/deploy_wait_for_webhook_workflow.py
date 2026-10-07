@@ -158,7 +158,7 @@ def wait_until_webhook_ready(workflow_client, workflow_id: str) -> Workflow:
         if wait_task and wait_task.status == "IN_PROGRESS":
             return execution
 
-        if execution.status in {"FAILED", "TIMED_OUT", "TERMINATED"}:
+        if execution.status in {"COMPLETED", "FAILED", "TIMED_OUT", "TERMINATED"}:
             raise RuntimeError(f"Workflow entered terminal status {execution.status}")
 
         time.sleep(POLL_INTERVAL_SECONDS)

@@ -28,13 +28,13 @@ and where to find each part of the code:
 Every language version provides the same five steps, which this README refers
 to by name:
 
-| Step | What it does |
-| --- | --- |
-| **create-db** | Creates the local database used from Exercise 1 onward |
+| Step                | What it does                                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **create-db**       | Creates the local database used from Exercise 1 onward                                                       |
 | **deploy-workflow** | Registers the agent and workflow, starts an execution, and exits once it reaches the `WAIT_FOR_WEBHOOK` task |
-| **serve-agent** | Runs the agent's local tool workers until you stop it |
-| **send-webhook** | Sends the webhook payload that resumes the workflow |
-| **query-db** | Prints the emails stored in the local database |
+| **serve-agent**     | Runs the agent's local tool workers until you stop it                                                        |
+| **send-webhook**    | Sends the webhook payload that resumes the workflow                                                          |
+| **query-db**        | Prints the emails stored in the local database                                                               |
 
 Each language version registers its own workflow and agent, named after the
 language (for example `wait_for_webhook_demo_python` and

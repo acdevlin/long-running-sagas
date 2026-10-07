@@ -62,8 +62,8 @@ that exercise. The Java files below are in
 | Read-only database queries                                           | `utils/QuerySqliteDb.java`          | 3         |
 | Database setup, using [`../shared/schema.sql`](../shared/schema.sql) | `utils/CreateSqliteDb.java`         |           |
 | Local database file, created by **create-db** in this folder         | `webhook_codelab_storage.db`        |           |
-| Adapter that adds a `WAIT_FOR_WEBHOOK` task to the workflow          | `utils/WaitForWebhookTask.java`     |           |
-| Adapter that adds an `AGENT` task to the workflow                    | `utils/AgentTask.java`              |           |
+| Helper for the `WAIT_FOR_WEBHOOK` task                               | `utils/WaitForWebhookTask.java`     |           |
+| Helper for the `AGENT` task                                          | `utils/AgentTask.java`              |           |
 | Step names used by `./gradlew <step>`                                | `Main.java` and `build.gradle.kts`  |           |
 
 ## Java Notes
@@ -83,8 +83,12 @@ that exercise. The Java files below are in
   at a time unless you raise its `threadCount`.
 - **Exercise 3:** Declare each agent tool as a public method with the `@Tool`
   annotation from `org.conductoross.conductor.ai.annotations`, on a class of its
-  own. `ToolRegistry.fromInstance(new YourTools())` turns those methods into the
-  list for the agent builder's `tools(...)`. The agent receives each tool's
+  own. `@Tool` names a tool after its method exactly as written, so set its
+  `name` to the snake_case tool name, and its `description`, which the LLM reads
+  to decide when and how to call the tool. The method's parameters become the
+  tool's parameters. `ToolRegistry.fromInstance(new YourTools())`, from
+  `org.conductoross.conductor.ai.internal`, turns those methods into the list
+  for the agent builder's `tools(...)`. The agent receives each tool's
   result as JSON. A returned `Map<String, Object>` becomes that JSON as it is,
   with its keys exactly as you wrote them, but the SDK nests any other return
   value, such as a record, under a `result` key.

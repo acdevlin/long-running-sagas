@@ -19,5 +19,14 @@ if (args.Length != 1 || !steps.TryGetValue(args[0], out var step))
     return;
 }
 
-// A step that handles its own failure reports it through Environment.ExitCode.
-await step();
+// A step that handles its own failure reports it through Environment.ExitCode. Any other
+// error is printed with its stack trace, and the step exits with 1 instead of aborting.
+try
+{
+    await step();
+}
+catch (Exception error)
+{
+    Console.Error.WriteLine($"{args[0]}: {error}");
+    Environment.ExitCode = 1;
+}

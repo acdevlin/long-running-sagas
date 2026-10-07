@@ -10,6 +10,7 @@ from utils.webhook_agent import webhook_agent
 def main() -> None:
     """Deploy the agent and serve its tool workers until interrupted."""
     with AgentRuntime(configuration=Configuration()) as runtime:
+        print("Serving the agent's tool workers. Press Ctrl+C to stop.")
         runtime.serve(webhook_agent)
 
 

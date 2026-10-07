@@ -141,11 +141,16 @@ public static class DeployWaitForWebhookWorkflow
                 return execution;
             }
 
-            if (execution.Status is Workflow.StatusEnum.FAILED
+            if (execution.Status is Workflow.StatusEnum.COMPLETED
+                or Workflow.StatusEnum.FAILED
                 or Workflow.StatusEnum.TIMEDOUT
                 or Workflow.StatusEnum.TERMINATED)
             {
-                throw new InvalidOperationException($"Workflow entered terminal status {execution.Status}");
+                // The SDK names TIMED_OUT as TIMEDOUT, so print the server's name for it.
+                var status = execution.Status == Workflow.StatusEnum.TIMEDOUT
+                    ? "TIMED_OUT"
+                    : execution.Status.ToString();
+                throw new InvalidOperationException($"Workflow entered terminal status {status}");
             }
 
             await Task.Delay(PollInterval);

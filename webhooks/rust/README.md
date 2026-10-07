@@ -61,7 +61,7 @@ that exercise.
 | Helper for the `DYNAMIC_FORK` task                                   | `src/utils/dynamic_fork_task.rs`          | 2         |
 | Database setup, using [`../shared/schema.sql`](../shared/schema.sql) | `src/utils/create_sqlite_db.rs`           |           |
 | Local database file, created by **create-db** in this folder         | `webhook_codelab_storage.db`              |           |
-| Helper that creates the `AGENT` task                                 | `src/utils/agent_task.rs`                 |           |
+| Helper for the `AGENT` task                                          | `src/utils/agent_task.rs`                 |           |
 | Step names used by `cargo run -- <step>`                             | `src/main.rs`                             |           |
 
 The steps' code is a library, listed in `src/lib.rs`, that `src/main.rs` runs.

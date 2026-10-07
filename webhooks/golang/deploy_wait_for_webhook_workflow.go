@@ -130,7 +130,8 @@ func waitUntilWebhookReady(
 		time.Sleep(readinessPollInterval)
 	}
 
-	return nil, fmt.Errorf("workflow did not reach %s within %v", waitTaskRef, readinessTimeout)
+	return nil, fmt.Errorf("workflow did not reach %s within %d seconds", waitTaskRef,
+		int(readinessTimeout.Seconds()))
 }
 
 // emailRow is one completed send_email task's output, checked against the emails table's columns.

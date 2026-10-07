@@ -19,7 +19,7 @@ public static class WebhookAgent
         if (separator < 0)
         {
             throw new InvalidOperationException(
-                "Settings.LlmModel must use the 'provider/model' format, for example " +
+                "CONDUCTOR_AGENT_LLM_MODEL must use the 'provider/model' format, for example " +
                 $"'openai/gpt-5-nano'; got '{llmModel}'.");
         }
         var model = llmModel[(separator + 1)..];
