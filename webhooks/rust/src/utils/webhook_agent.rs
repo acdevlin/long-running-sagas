@@ -53,17 +53,18 @@ struct GetRecipientEmailHistoryArgs {
 async fn get_recipient_email_history(
     args: GetRecipientEmailHistoryArgs,
 ) -> conductor::Result<serde_json::Value> {
-    // An empty recipient matches no emails. A terminal error fails the call without retries, since
-    // they would fail the same way.
-    if args.recipient.is_empty() {
+    // Trim so a padded address still matches. A blank one can never succeed, so fail at once
+    // instead of letting Conductor retry the task.
+    let recipient = args.recipient.trim();
+    if recipient.is_empty() {
         return Err(ConductorError::terminal_tool(
             "A recipient email address is required",
         ));
     }
-    let emails = fetch_emails(Some(&args.recipient))
+    let emails = fetch_emails(Some(recipient))
         .map_err(|error| ConductorError::agent(format!("{error:#}")))?;
     Ok(json!({
-        "recipient": args.recipient,
+        "recipient": recipient,
         "email_count": emails.len(),
         "emails": emails,
     }))

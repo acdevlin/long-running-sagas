@@ -17,9 +17,10 @@ import io.orkes.codelab.webhooks.utils.Workers;
 
 import org.conductoross.conductor.ai.AgentRuntime;
 
-import java.sql.DriverManager;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +50,17 @@ public final class DeployWaitForWebhookWorkflow {
     /** Build the workflow definition without registering or starting it. */
     private static ConductorWorkflow<Map<String, Object>> buildWorkflow(
             WorkflowExecutor workflowExecutor) {
-        var workflow = new ConductorWorkflow<Map<String, Object>>(workflowExecutor);
+        // Lists the input that every execution needs, which ConductorWorkflow has no setting for.
+        // Conductor shows it in the workflow definition but does not require it when one starts.
+        var workflow =
+                new ConductorWorkflow<Map<String, Object>>(workflowExecutor) {
+                    @Override
+                    public WorkflowDef toWorkflowDef() {
+                        WorkflowDef definition = super.toWorkflowDef();
+                        definition.setInputParameters(List.of("user_ids"));
+                        return definition;
+                    }
+                };
         workflow.setName(WORKFLOW_NAME);
         workflow.setVersion(WORKFLOW_VERSION);
         workflow.setDescription(
@@ -133,27 +144,61 @@ public final class DeployWaitForWebhookWorkflow {
                         .formatted(WAIT_TASK_REF, READINESS_TIMEOUT.toSeconds()));
     }
 
-    /** Insert all completed email outputs in one database transaction. */
-    private static int storeEmailOutputs(Workflow execution) throws SQLException {
-        List<Map<String, Object>> emails =
+    /** Return the output of every completed send_email task, after checking its fields. */
+    private static List<Map<String, Object>> getCompletedEmailOutputs(Workflow execution) {
+        List<Task> emailTasks =
                 execution.getTasks().stream()
-                        .filter(task -> "send_email".equals(task.getTaskDefName()))
+                        .filter(task -> Workers.SEND_EMAIL_TASK_NAME.equals(task.getTaskDefName()))
                         .filter(task -> task.getStatus() == Task.Status.COMPLETED)
-                        .map(task -> task.getOutputData())
                         .toList();
+        // No completed send_email task means no email was sent, so fail rather than report
+        // success.
+        if (emailTasks.isEmpty()) {
+            throw new IllegalStateException(
+                    "No completed " + Workers.SEND_EMAIL_TASK_NAME + " task outputs were found");
+        }
+
+        // Check every output before inserting any, so a malformed one fails with a message naming
+        // its task instead of a database error.
+        for (Task task : emailTasks) {
+            Map<String, Object> output = task.getOutputData();
+            List<String> invalidFields = new ArrayList<>();
+            // The server returns whole numbers as Integer or Long, depending on their size.
+            Object sentTime = output.get("sent_time");
+            if (!(sentTime instanceof Integer || sentTime instanceof Long)) {
+                invalidFields.add("sent_time");
+            }
+            if (!(output.get("subject") instanceof String)) {
+                invalidFields.add("subject");
+            }
+            if (!(output.get("recipients") instanceof String)) {
+                invalidFields.add("recipients");
+            }
+            if (!invalidFields.isEmpty()) {
+                throw new IllegalStateException(
+                        "Completed task "
+                                + task.getReferenceTaskName()
+                                + " has missing or invalid fields: "
+                                + String.join(", ", invalidFields));
+            }
+        }
+        return emailTasks.stream().map(task -> task.getOutputData()).toList();
+    }
+
+    /** Insert all completed email outputs in one database transaction. */
+    private static int storeEmailOutputs(List<Map<String, Object>> emails)
+            throws IOException, SQLException {
         String insertSql =
                 """
                 INSERT INTO emails (sent_time, subject, recipients)
                 VALUES (?, ?, ?)
                 """;
 
-        try (var connection =
-                        DriverManager.getConnection("jdbc:sqlite:" + QuerySqliteDb.DATABASE_PATH);
+        try (var connection = QuerySqliteDb.openDatabase(true);
                 var insert = connection.prepareStatement(insertSql)) {
             // Use a single DB transaction to avoid partial insert failures.
             connection.setAutoCommit(false);
             for (Map<String, Object> email : emails) {
-                // The server returns whole numbers as Integer or Long, depending on their size.
                 insert.setLong(1, ((Number) email.get("sent_time")).longValue());
                 insert.setString(2, (String) email.get("subject"));
                 insert.setString(3, (String) email.get("recipients"));
@@ -164,7 +209,7 @@ public final class DeployWaitForWebhookWorkflow {
         return emails.size();
     }
 
-    public static int run() throws InterruptedException, TimeoutException, SQLException {
+    public static int run() throws InterruptedException {
         Settings settings = Settings.current();
         // Build the agent first, so a malformed model setting fails before any worker starts.
         var agent = WebhookAgent.create();
@@ -192,7 +237,7 @@ public final class DeployWaitForWebhookWorkflow {
                     "Workflow URL: " + settings.serverBaseUrl() + "/execution/" + workflowId);
 
             Workflow execution = waitUntilWebhookReady(new WorkflowClient(apiClient), workflowId);
-            int storedCount = storeEmailOutputs(execution);
+            int storedCount = storeEmailOutputs(getCompletedEmailOutputs(execution));
             System.out.println(
                     "Stored " + storedCount + " email record(s) in " + QuerySqliteDb.DATABASE_PATH);
             System.out.println(WAIT_TASK_REF + " is ready");
@@ -202,6 +247,10 @@ public final class DeployWaitForWebhookWorkflow {
                             + "code since they started.");
             System.out.println("Webhook URL: " + settings.webhookEndpointUrl());
             return 0;
+        } catch (IOException | IllegalStateException | TimeoutException | SQLException error) {
+            // Report expected failures in one line, as the query-db step does.
+            System.err.println("Deploy step failed: " + error.getMessage());
+            return 1;
         } finally {
             workflowExecutor.shutdown();
             apiClient.shutdown();

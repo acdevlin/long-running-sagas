@@ -33,17 +33,21 @@ type EmailActivity struct {
 	EmailCount int64  `json:"email_count"`
 }
 
-// openReadOnlyDatabase opens a read-only connection to the codelab database. Checking the path
-// first gives a clear error when the database has not been created yet.
-func openReadOnlyDatabase() (*sql.DB, error) {
+// OpenDatabase opens the codelab database, read-only unless writable is true. Opening a missing
+// file would create an empty database, so check the path first and open without creating it.
+func OpenDatabase(writable bool) (*sql.DB, error) {
 	if info, err := os.Stat(DatabasePath); err != nil || !info.Mode().IsRegular() {
 		return nil, fmt.Errorf("database not found at %s; run the create-db step "+
 			"(go run . create-db) first", DatabasePath)
 	}
 
 	// Read-only mode prevents this query helper and the agent tools that use it from modifying the
-	// codelab database.
-	return sql.Open("sqlite", "file:"+filepath.ToSlash(DatabasePath)+"?mode=ro")
+	// codelab database. Neither mode creates the file.
+	mode := "ro"
+	if writable {
+		mode = "rw"
+	}
+	return sql.Open("sqlite", "file:"+filepath.ToSlash(DatabasePath)+"?mode="+mode)
 }
 
 // FetchEmails returns the stored emails in insertion order. Unless recipient is empty, it returns
@@ -60,7 +64,7 @@ func FetchEmails(recipient string) ([]Email, error) {
 	}
 	query += "ORDER BY id"
 
-	db, err := openReadOnlyDatabase()
+	db, err := OpenDatabase(false)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +99,7 @@ func FetchEmailActivity() ([]EmailActivity, error) {
 		ORDER BY email_count DESC, recipient
 		`
 
-	db, err := openReadOnlyDatabase()
+	db, err := OpenDatabase(false)
 	if err != nil {
 		return nil, err
 	}

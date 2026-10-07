@@ -89,9 +89,15 @@ public final class WebhookAgent {
                                 + "email address from summarize_email_activity.")
         public Map<String, Object> getRecipientEmailHistory(String recipient)
                 throws IOException, SQLException {
-            List<Map<String, Object>> emails = QuerySqliteDb.fetchEmails(recipient);
+            // Trim so a padded address still matches, and reject a missing or blank one, which can
+            // never succeed. This SDK can't stop Conductor retrying a failed tool call.
+            if (recipient == null || recipient.isBlank()) {
+                throw new IllegalArgumentException("A recipient email address is required");
+            }
+            String trimmedRecipient = recipient.strip();
+            List<Map<String, Object>> emails = QuerySqliteDb.fetchEmails(trimmedRecipient);
             return Map.of(
-                    "recipient", recipient,
+                    "recipient", trimmedRecipient,
                     "email_count", emails.size(),
                     "emails", emails);
         }

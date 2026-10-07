@@ -11,18 +11,19 @@ module QuerySqliteDb
   # Raised when the create-db step hasn't created the database yet.
   class DatabaseNotFoundError < StandardError; end
 
-  # Open a read-only connection to the codelab database, yield it, then close it. Checking the path
-  # first prevents SQLite from silently creating an empty database when the codelab database has
-  # not been initialized.
-  def self.open_read_only_database(&)
+  # Open a connection to the codelab database, read-only unless writable is true, yield it, then
+  # close it. Opening a missing file would create an empty database, so check the path first and
+  # open without creating it.
+  def self.open_database(writable: false, &)
     unless File.file?(DATABASE_PATH)
       raise DatabaseNotFoundError, "Database not found at #{DATABASE_PATH}. Run the create-db " \
                                    'step (bundle exec ruby utils/create_sqlite_db.rb) first.'
     end
 
-    # Read-only mode prevents this query helper and the agent tools that use it from modifying
-    # the codelab database. Each row is a Hash keyed by column name.
-    SQLite3::Database.open(DATABASE_PATH, readonly: true, results_as_hash: true, &)
+    # Read-only mode stops the query helpers and agent tools from modifying the database, and
+    # neither mode creates the file. Each row is a Hash keyed by column name.
+    flags = writable ? SQLite3::Constants::Open::READWRITE : SQLite3::Constants::Open::READONLY
+    SQLite3::Database.open(DATABASE_PATH, flags: flags, results_as_hash: true, &)
   end
 
   # Return stored emails in insertion order, optionally for one recipient.
@@ -38,7 +39,7 @@ module QuerySqliteDb
     end
     query << 'ORDER BY id'
 
-    open_read_only_database { |database| database.execute(query, parameters) }
+    open_database { |database| database.execute(query, parameters) }
   end
 
   # Return one email-count row per recipient, ordered by activity.
@@ -52,7 +53,7 @@ module QuerySqliteDb
       ORDER BY email_count DESC, recipient
       "
 
-    open_read_only_database { |database| database.execute(query) }
+    open_database { |database| database.execute(query) }
   end
 
   # Print email rows in an aligned table with database field headings.

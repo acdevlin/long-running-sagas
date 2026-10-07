@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from conductor.ai.agents import Agent, tool
+from conductor.ai.agents import Agent, TerminalToolError, tool
 from settings import settings
 
 from .query_sqlite_db import fetch_email_activity, fetch_emails
@@ -26,9 +26,11 @@ def summarize_email_activity() -> dict[str, Any]:
 @tool
 def get_recipient_email_history(recipient: str) -> dict[str, Any]:
     """Return stored emails for a recipient selected from the activity summary."""
+    # Trim so a padded address still matches. A missing or blank one can never succeed,
+    # so fail at once instead of letting Conductor retry the task.
+    if not isinstance(recipient, str) or not recipient.strip():
+        raise TerminalToolError("A recipient email address is required")
     recipient = recipient.strip()
-    if not recipient:
-        raise ValueError("A recipient email address is required")
 
     emails = [dict(email) for email in fetch_emails(recipient=recipient)]
     return {

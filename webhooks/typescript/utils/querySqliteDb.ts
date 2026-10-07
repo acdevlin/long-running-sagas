@@ -3,6 +3,7 @@
 import { statSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync, type SQLOutputValue } from "node:sqlite";
+import { pathToFileURL } from "node:url";
 
 /** The local database file, created by the create-db step next to this file. */
 export const DATABASE_PATH = path.join(import.meta.dirname, "webhook_codelab_storage.db");
@@ -11,10 +12,10 @@ export const DATABASE_PATH = path.join(import.meta.dirname, "webhook_codelab_sto
 export type Row = Record<string, SQLOutputValue>;
 
 /**
- * Open a read-only connection to the codelab database. Checking the path first gives a clear error
- * when the database has not been created yet.
+ * Open a connection to the codelab database, read-only unless `writable` is true. Opening a missing
+ * file would create an empty database, so check the path first and open without creating it.
  */
-function openReadOnlyDatabase(): DatabaseSync {
+export function openDatabase(writable = false): DatabaseSync {
   if (!statSync(DATABASE_PATH, { throwIfNoEntry: false })?.isFile()) {
     throw new Error(
       `Database not found at ${DATABASE_PATH}. Run the create-db step (npm run create-db) first.`,
@@ -22,8 +23,10 @@ function openReadOnlyDatabase(): DatabaseSync {
   }
 
   // Read-only mode prevents this query helper and the agent tools that use it from modifying the
-  // codelab database.
-  return new DatabaseSync(DATABASE_PATH, { readOnly: true });
+  // codelab database. Neither mode creates the file.
+  const url = pathToFileURL(DATABASE_PATH);
+  url.searchParams.set("mode", writable ? "rw" : "ro");
+  return new DatabaseSync(url);
 }
 
 /** Return stored emails in insertion order, optionally for one recipient. */
@@ -39,7 +42,7 @@ export function fetchEmails(recipient?: string): Row[] {
   }
   query += "ORDER BY id";
 
-  const database = openReadOnlyDatabase();
+  const database = openDatabase();
   try {
     return database.prepare(query).all(...parameters);
   } finally {
@@ -58,7 +61,7 @@ export function fetchEmailActivity(): Row[] {
     ORDER BY email_count DESC, recipient
     `;
 
-  const database = openReadOnlyDatabase();
+  const database = openDatabase();
   try {
     return database.prepare(query).all();
   } finally {

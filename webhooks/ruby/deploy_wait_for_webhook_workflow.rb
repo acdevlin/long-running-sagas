@@ -23,6 +23,9 @@ WORKFLOW_NAME = "wait_for_webhook_demo_#{Settings::LANGUAGE}".freeze
 WORKFLOW_VERSION = 1
 WAIT_TASK_REF = 'wait_for_webhook_ref'
 
+# The class each send_email output field must have to fit the emails table.
+EMAIL_OUTPUT_FIELDS = { 'sent_time' => Integer, 'subject' => String, 'recipients' => String }.freeze
+
 WORKFLOW_TIMEOUT_SECONDS = 7 * 24 * 60 * 60
 READINESS_TIMEOUT_SECONDS = 60
 POLL_INTERVAL_SECONDS = 1
@@ -54,7 +57,8 @@ def build_workflow
   # for example because no webhook arrives. ALERT_ONLY would let it keep running.
   definition.timeout_seconds = WORKFLOW_TIMEOUT_SECONDS
   definition.timeout_policy = Conductor::Workflow::TimeoutPolicy::TIME_OUT_WORKFLOW
-  # Declares the input that every execution of the workflow needs.
+  # Lists the input that every execution needs. Conductor shows it in the workflow definition
+  # but does not require it when a workflow starts.
   definition.input_parameters = ['user_ids']
 
   webhook_wait = WaitForWebhookTask.build(
@@ -120,13 +124,31 @@ def wait_until_webhook_ready(workflow_executor, workflow_id)
   raise "Workflow did not reach #{WAIT_TASK_REF} within #{READINESS_TIMEOUT_SECONDS} seconds"
 end
 
-# Insert all completed email outputs in one database transaction.
-def store_email_outputs(execution)
-  emails = execution.tasks.filter_map do |task|
-    task.output_data if task.task_def_name == Workers::SEND_EMAIL_TASK_NAME && task.completed?
+# Return the output of every completed send_email task, after checking its fields.
+def get_completed_email_outputs(execution)
+  tasks = execution.tasks.select do |task|
+    task.task_def_name == Workers::SEND_EMAIL_TASK_NAME && task.completed?
   end
+  # No completed send_email task means no email was sent, so fail rather than report success.
+  raise "No completed #{Workers::SEND_EMAIL_TASK_NAME} task outputs were found" if tasks.empty?
 
-  SQLite3::Database.open(QuerySqliteDb::DATABASE_PATH) do |database|
+  # Check every output before inserting any, so a malformed one fails with a message naming its
+  # task instead of a database error.
+  tasks.map do |task|
+    output = task.output_data || {}
+    invalid_fields = EMAIL_OUTPUT_FIELDS.reject { |field, type| output[field].is_a?(type) }.keys
+    unless invalid_fields.empty?
+      raise "Completed task #{task.reference_task_name} has missing or invalid fields: " \
+            "#{invalid_fields.join(', ')}"
+    end
+
+    output
+  end
+end
+
+# Insert all completed email outputs in one database transaction.
+def store_email_outputs(emails)
+  QuerySqliteDb.open_database(writable: true) do |database|
     # Use a single DB transaction to avoid partial insert failures.
     database.transaction do
       emails.each do |email|
@@ -159,16 +181,21 @@ def main
     puts "Workflow URL: #{SETTINGS.server_base_url}/execution/#{workflow_id}"
 
     execution = wait_until_webhook_ready(workflow_executor, workflow_id)
-    stored_count = store_email_outputs(execution)
+    stored_count = store_email_outputs(get_completed_email_outputs(execution))
     puts "Stored #{stored_count} email record(s) in #{QuerySqliteDb::DATABASE_PATH}"
     puts "#{WAIT_TASK_REF} is ready"
     puts 'Before sending the webhook, start the agent tool workers with ' \
          '`bundle exec ruby serve_webhook_agent.rb`, or restart them if you\'ve changed ' \
          'the code since they started.'
     puts "Webhook URL: #{SETTINGS.webhook_endpoint_url}"
+    0
+  rescue RuntimeError, QuerySqliteDb::DatabaseNotFoundError, SQLite3::Exception => e
+    # Report expected failures in one line, as the query-db step does.
+    warn "Deploy step failed: #{e.message}"
+    1
   ensure
     task_handler.stop
   end
 end
 
-main if $PROGRAM_NAME == __FILE__
+exit(main) if $PROGRAM_NAME == __FILE__

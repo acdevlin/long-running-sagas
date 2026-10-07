@@ -1,6 +1,7 @@
 package io.orkes.codelab.webhooks.utils;
 
 import org.sqlite.SQLiteConfig;
+import org.sqlite.SQLiteOpenMode;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -45,7 +46,7 @@ public final class QuerySqliteDb {
                         + (recipient != null ? "WHERE recipients = ?\n" : "")
                         + "ORDER BY id";
 
-        try (Connection connection = openReadOnlyDatabase();
+        try (Connection connection = openDatabase(false);
                 var statement = connection.prepareStatement(query)) {
             if (recipient != null) {
                 statement.setString(1, recipient);
@@ -68,7 +69,7 @@ public final class QuerySqliteDb {
                 ORDER BY email_count DESC, recipient
                 """;
 
-        try (Connection connection = openReadOnlyDatabase();
+        try (Connection connection = openDatabase(false);
                 var statement = connection.prepareStatement(query);
                 ResultSet resultSet = statement.executeQuery()) {
             return readRows(resultSet);
@@ -124,19 +125,24 @@ public final class QuerySqliteDb {
     }
 
     /**
-     * Open a read-only connection to the codelab database. Checking the path first gives a clear
-     * error when the database has not been created yet.
+     * Open a connection to the codelab database, read-only unless {@code writable} is true. Opening
+     * a missing file would create an empty database, so check the path first and open without
+     * creating it.
      */
-    private static Connection openReadOnlyDatabase() throws IOException, SQLException {
+    public static Connection openDatabase(boolean writable) throws IOException, SQLException {
         if (!Files.isRegularFile(DATABASE_PATH)) {
             throw new FileNotFoundException(
                     "Database not found at " + DATABASE_PATH + ". Run the create-db step first.");
         }
 
         // Read-only mode prevents this query helper and the agent tools that use it from
-        // modifying the codelab database.
+        // modifying the codelab database. Neither mode creates the file.
         SQLiteConfig config = new SQLiteConfig();
-        config.setReadOnly(true);
+        if (writable) {
+            config.resetOpenMode(SQLiteOpenMode.CREATE);
+        } else {
+            config.setReadOnly(true);
+        }
         return DriverManager.getConnection("jdbc:sqlite:" + DATABASE_PATH, config.toProperties());
     }
 

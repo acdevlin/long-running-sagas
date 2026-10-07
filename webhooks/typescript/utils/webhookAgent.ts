@@ -36,13 +36,14 @@ const summarizeEmailActivity = tool(
 
 const getRecipientEmailHistory = tool(
   async ({ recipient }: { recipient: string }) => {
-    // fetchEmails returns every email when recipient is undefined, so require one. A
-    // TerminalToolError fails the call without retries, since they would fail the same way.
-    if (!recipient) {
+    // Trim so a padded address still matches. A missing or blank one can never succeed, so fail
+    // at once instead of letting Conductor retry the task.
+    if (typeof recipient !== "string" || recipient.trim() === "") {
       throw new TerminalToolError("A recipient email address is required");
     }
-    const emails = fetchEmails(recipient);
-    return { recipient, email_count: emails.length, emails };
+    const trimmedRecipient = recipient.trim();
+    const emails = fetchEmails(trimmedRecipient);
+    return { recipient: trimmedRecipient, email_count: emails.length, emails };
   },
   {
     name: "get_recipient_email_history",

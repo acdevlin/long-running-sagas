@@ -19,12 +19,15 @@ module Workers
   worker_task 'get_user_emails'
   # Return one send_email task per user's email address, for the workflow's dynamic fork.
   def self.get_user_emails(user_ids:, subject:, body:)
+    # With no user IDs the fork would send no emails, but the workflow would still wait for its
+    # webhook, so fail instead.
     valid_list = user_ids.is_a?(Array) && !user_ids.empty?
     raise ArgumentError, 'At least one user ID is required' unless valid_list
 
     dynamic_tasks = []
     dynamic_tasks_inputs = {}
     user_ids.each_with_index do |user_id, index|
+      # A blank ID would produce an invalid address such as "@example.com".
       valid_id = user_id.is_a?(String) && !user_id.strip.empty?
       raise ArgumentError, "Invalid user ID at index #{index}" unless valid_id
 

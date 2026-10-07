@@ -30,8 +30,10 @@ module WebhookAgent
                     'recipient. Call this first.'
 
   def get_recipient_email_history(recipient:)
-    # fetch_emails returns every email when recipient is nil, so require one.
-    raise ArgumentError, 'A recipient email address is required' if recipient.to_s.empty?
+    # Trim so a padded address still matches, and reject a missing or blank one, which can never
+    # succeed. This SDK can't stop Conductor retrying a failed tool call.
+    recipient = recipient.to_s.strip
+    raise ArgumentError, 'A recipient email address is required' if recipient.empty?
 
     emails = QuerySqliteDb.fetch_emails(recipient: recipient)
     { 'recipient' => recipient, 'email_count' => emails.size, 'emails' => emails }

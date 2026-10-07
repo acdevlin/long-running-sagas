@@ -16,13 +16,13 @@ use conductor::models::{
     StartWorkflowRequest, TaskStatus, Workflow, WorkflowDef, WorkflowTask, WorkflowTimeoutPolicy,
 };
 use conductor::worker::TaskHandler;
-use rusqlite::{Connection, params};
+use rusqlite::params;
 use serde_json::Value;
 
 use crate::settings::{self, LANGUAGE, Settings};
 use crate::utils::agent_task::agent_task;
 use crate::utils::dynamic_fork_task::dynamic_fork_task;
-use crate::utils::query_sqlite_db::DATABASE_PATH;
+use crate::utils::query_sqlite_db::{DATABASE_PATH, open_database};
 use crate::utils::webhook_agent::{WEBHOOK_AGENT_NAME, webhook_agent};
 use crate::utils::workers::{
     self, DYNAMIC_TASKS_INPUTS_PARAM, DYNAMIC_TASKS_PARAM, SEND_EMAIL_TASK_NAME,
@@ -77,7 +77,8 @@ fn build_workflow() -> Result<Value> {
         // Mark the execution TIMED_OUT if it runs longer than WORKFLOW_TIMEOUT_SECONDS,
         // for example because no webhook arrives. ALERT_ONLY would let it keep running.
         .with_timeout(WORKFLOW_TIMEOUT_SECONDS, WorkflowTimeoutPolicy::TimeOutWf)
-        // Declares the input that every execution of the workflow needs.
+        // Lists the input that every execution needs. Conductor shows it in the workflow definition
+        // but does not require it when a workflow starts.
         .with_input_parameters(vec!["user_ids".to_owned()])
         .with_task(get_emails_task)
         .with_task(send_emails_fork)
@@ -137,29 +138,73 @@ async fn wait_until_webhook_ready(
     )
 }
 
-/// Insert all completed email outputs in one database transaction.
-fn store_email_outputs(execution: &Workflow) -> Result<usize> {
-    let emails: Vec<_> = execution
+/// One completed `send_email` task's output, checked against the emails table's columns.
+struct EmailRow<'a> {
+    sent_time: i64,
+    subject: &'a str,
+    recipients: &'a str,
+}
+
+/// Return the output of every completed `send_email` task, after checking its fields.
+fn get_completed_email_outputs(execution: &Workflow) -> Result<Vec<EmailRow<'_>>> {
+    let email_tasks: Vec<_> = execution
         .tasks
         .iter()
         .filter(|task| {
             task.task_def_name == SEND_EMAIL_TASK_NAME && task.status == TaskStatus::Completed
         })
-        .map(|task| &task.output_data)
         .collect();
+    // No completed send_email task means no email was sent, so fail rather than report success.
+    if email_tasks.is_empty() {
+        bail!("no completed {SEND_EMAIL_TASK_NAME} task outputs were found");
+    }
 
-    let mut connection = Connection::open(DATABASE_PATH)?;
+    // Check every output before inserting any, so a malformed one fails with a message naming its
+    // task instead of a database error.
+    email_tasks
+        .into_iter()
+        .map(|task| {
+            let output = &task.output_data;
+            // as_i64 rejects a float, and as_str a non-string, as well as a missing value.
+            let sent_time = output.get("sent_time").and_then(Value::as_i64);
+            let subject = output.get("subject").and_then(Value::as_str);
+            let recipients = output.get("recipients").and_then(Value::as_str);
+            if let (Some(sent_time), Some(subject), Some(recipients)) =
+                (sent_time, subject, recipients)
+            {
+                return Ok(EmailRow {
+                    sent_time,
+                    subject,
+                    recipients,
+                });
+            }
+            let invalid_fields: Vec<_> = [
+                ("sent_time", sent_time.is_none()),
+                ("subject", subject.is_none()),
+                ("recipients", recipients.is_none()),
+            ]
+            .into_iter()
+            .filter_map(|(field, invalid)| invalid.then_some(field))
+            .collect();
+            bail!(
+                "completed task {} has missing or invalid fields: {}",
+                task.reference_task_name,
+                invalid_fields.join(", ")
+            )
+        })
+        .collect()
+}
+
+/// Insert all completed email outputs in one database transaction.
+fn store_email_outputs(emails: &[EmailRow]) -> Result<usize> {
+    let mut connection = open_database(true)?;
     // Use a single DB transaction to avoid partial insert failures. Dropping it without committing
     // rolls it back.
     let transaction = connection.transaction()?;
-    for email in &emails {
+    for email in emails {
         transaction.execute(
             "INSERT INTO emails (sent_time, subject, recipients) VALUES (?1, ?2, ?3)",
-            params![
-                email.get("sent_time").and_then(Value::as_i64),
-                email.get("subject").and_then(Value::as_str),
-                email.get("recipients").and_then(Value::as_str),
-            ],
+            params![email.sent_time, email.subject, email.recipients],
         )?;
     }
     transaction.commit()?;
@@ -210,7 +255,7 @@ async fn deploy(config: Configuration, settings: &Settings, agent: &AgentDef) ->
     );
 
     let execution = wait_until_webhook_ready(&workflow_client, &workflow_id).await?;
-    let stored_count = store_email_outputs(&execution)?;
+    let stored_count = store_email_outputs(&get_completed_email_outputs(&execution)?)?;
     println!("Stored {stored_count} email record(s) in {DATABASE_PATH}");
     println!("{WAIT_TASK_REF} is ready");
     println!(

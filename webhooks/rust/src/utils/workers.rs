@@ -23,7 +23,8 @@ pub fn workers() -> Vec<FnWorker> {
 /// Return one `send_email` task per user's email address, for the workflow's dynamic fork.
 #[worker(name = "get_user_emails")]
 async fn get_user_emails(user_ids: Vec<String>, subject: String, body: String) -> WorkerOutput {
-    // #[worker] passes an empty list when user_ids is missing or isn't a list of strings.
+    // With no user IDs the fork would send no emails, but the workflow would still wait for its
+    // webhook, so fail instead. #[worker] passes an empty list if user_ids is missing or malformed.
     if user_ids.is_empty() {
         return WorkerOutput::failed("At least one user ID is required");
     }
@@ -31,6 +32,7 @@ async fn get_user_emails(user_ids: Vec<String>, subject: String, body: String) -
     let mut dynamic_tasks = Vec::new();
     let mut dynamic_tasks_inputs = Map::new();
     for (index, user_id) in user_ids.iter().enumerate() {
+        // A blank ID would produce an invalid address such as "@example.com".
         if user_id.trim().is_empty() {
             return WorkerOutput::failed(format!("Invalid user ID at index {index}"));
         }

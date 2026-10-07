@@ -19,6 +19,8 @@ def get_user_emails(
     body: str,
 ) -> dict[str, Any]:
     """Resolve user emails and prepare one dynamic send task per address."""
+    # With no user IDs the fork would send no emails, but the workflow would still
+    # wait for its webhook, so fail instead.
     if not user_ids:
         raise ValueError("At least one user ID is required")
 
@@ -26,6 +28,7 @@ def get_user_emails(
     dynamic_task_inputs = {}
 
     for index, user_id in enumerate(user_ids):
+        # A blank ID would produce an invalid address such as "@example.com".
         if not isinstance(user_id, str) or not user_id.strip():
             raise ValueError(f"Invalid user ID at index {index}")
 

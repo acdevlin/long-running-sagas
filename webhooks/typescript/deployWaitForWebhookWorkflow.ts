@@ -6,7 +6,6 @@
  * callback; the serve-agent step runs the local tools needed after it resumes.
  */
 
-import { DatabaseSync } from "node:sqlite";
 import { setTimeout as sleep } from "node:timers/promises";
 import {
   ConductorWorkflow,
@@ -22,7 +21,7 @@ import { AgentRuntime } from "@io-orkes/conductor-javascript/agents";
 import { settings } from "./settings.ts";
 import { agentTask } from "./utils/agentTask.ts";
 import { dynamicForkTask } from "./utils/dynamicForkTask.ts";
-import { DATABASE_PATH } from "./utils/querySqliteDb.ts";
+import { DATABASE_PATH, openDatabase } from "./utils/querySqliteDb.ts";
 import { waitForWebhookTask } from "./utils/waitForWebhookTask.ts";
 import { webhookAgent } from "./utils/webhookAgent.ts";
 // Also registers the @worker methods in this file, which the TaskHandler in main then runs.
@@ -66,6 +65,8 @@ function buildWorkflow(workflowExecutor: WorkflowExecutor): ConductorWorkflow {
     // for example because no webhook arrives. ALERT_ONLY would let it keep running.
     .timeoutPolicy("TIME_OUT_WF")
     .timeoutSeconds(WORKFLOW_TIMEOUT_SECONDS)
+    // Lists the input that every execution needs. Conductor shows it in the workflow definition
+    // but does not require it when a workflow starts.
     .inputParameters(["user_ids"]);
 
   // Builds every send_email task for the fork, so it takes the subject and body too.
@@ -140,13 +141,46 @@ async function waitUntilWebhookReady(
   );
 }
 
-/** Insert all completed email outputs in one database transaction. */
-function storeEmailOutputs(execution: Workflow): number {
-  const emails = (execution.tasks ?? [])
-    .filter((task) => task.taskDefName === SEND_EMAIL_TASK_NAME && task.status === "COMPLETED")
-    .map((task) => task.outputData as { sent_time: number; subject: string; recipients: string });
+/** One completed send_email task's output, after its fields have been checked. */
+type EmailOutput = { sent_time: number; subject: string; recipients: string };
 
-  const database = new DatabaseSync(DATABASE_PATH);
+/** The check each send_email output field must pass to fit the emails table. */
+const EMAIL_OUTPUT_FIELDS: Record<keyof EmailOutput, (value: unknown) => boolean> = {
+  sent_time: Number.isInteger,
+  subject: (value) => typeof value === "string",
+  recipients: (value) => typeof value === "string",
+};
+
+/** Return the output of every completed send_email task, after checking its fields. */
+function getCompletedEmailOutputs(execution: Workflow): EmailOutput[] {
+  const emailTasks = (execution.tasks ?? []).filter(
+    (task) => task.taskDefName === SEND_EMAIL_TASK_NAME && task.status === "COMPLETED",
+  );
+  // No completed send_email task means no email was sent, so fail rather than report success.
+  if (emailTasks.length === 0) {
+    throw new Error(`No completed ${SEND_EMAIL_TASK_NAME} task outputs were found`);
+  }
+
+  // Check every output before inserting any, so a malformed one fails with a message naming its
+  // task instead of a database error.
+  return emailTasks.map((task) => {
+    const output = task.outputData ?? {};
+    const invalidFields = Object.entries(EMAIL_OUTPUT_FIELDS)
+      .filter(([field, isValid]) => !isValid(output[field]))
+      .map(([field]) => field);
+    if (invalidFields.length > 0) {
+      throw new Error(
+        `Completed task ${task.referenceTaskName} has missing or invalid fields: ` +
+          invalidFields.join(", "),
+      );
+    }
+    return output as EmailOutput;
+  });
+}
+
+/** Insert all completed email outputs in one database transaction. */
+function storeEmailOutputs(emails: EmailOutput[]): number {
+  const database = openDatabase(true);
   try {
     const insert = database.prepare(
       "INSERT INTO emails (sent_time, subject, recipients) VALUES (?, ?, ?)",
@@ -188,7 +222,7 @@ async function main(): Promise<void> {
     console.log(`Workflow URL: ${settings.serverBaseUrl}/execution/${workflowId}`);
 
     const execution = await waitUntilWebhookReady(workflowExecutor, workflowId);
-    const storedCount = storeEmailOutputs(execution);
+    const storedCount = storeEmailOutputs(getCompletedEmailOutputs(execution));
     console.log(`Stored ${storedCount} email record(s) in ${DATABASE_PATH}`);
     console.log(`${WAIT_TASK_REF} is ready`);
     console.log(
@@ -196,6 +230,11 @@ async function main(): Promise<void> {
         "`npm run serve-agent`, or restart them if you've changed the code since they started.",
     );
     console.log(`Webhook URL: ${settings.webhookEndpointUrl}`);
+  } catch (error) {
+    // Report failures in one line, as the query-db step does.
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`Deploy step failed: ${message}`);
+    process.exitCode = 1;
   } finally {
     await taskHandler.stopWorkers();
     // The client refreshes its access token in the background, which would keep this process

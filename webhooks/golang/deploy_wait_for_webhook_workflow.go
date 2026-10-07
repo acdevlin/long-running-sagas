@@ -9,8 +9,9 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
+	"math"
+	"strings"
 	"time"
 
 	"github.com/conductor-sdk/conductor-go/sdk/ai"
@@ -87,6 +88,9 @@ func buildWorkflow() *model.WorkflowDef {
 	// new kinds of task to it, so add these two to the definition that it builds.
 	definition := wf.ToWorkflowDef()
 	definition.Tasks = append(definition.Tasks, webhookWait, agentTask)
+	// Lists the input that every execution needs. Conductor shows it in the workflow definition
+	// but does not require it when a workflow starts.
+	definition.InputParameters = []string{"user_ids"}
 	return definition
 }
 
@@ -129,10 +133,57 @@ func waitUntilWebhookReady(
 	return nil, fmt.Errorf("workflow did not reach %s within %v", waitTaskRef, readinessTimeout)
 }
 
-// storeEmailOutputs inserts every completed send_email task's output in one database transaction,
-// and returns the number of rows inserted.
-func storeEmailOutputs(execution *model.Workflow) (int, error) {
-	db, err := sql.Open("sqlite", utils.DatabasePath)
+// emailRow is one completed send_email task's output, checked against the emails table's columns.
+type emailRow struct {
+	sentTime   int64
+	subject    string
+	recipients string
+}
+
+// getCompletedEmailOutputs returns the checked output of every completed send_email task.
+func getCompletedEmailOutputs(execution *model.Workflow) ([]emailRow, error) {
+	var emailTasks []model.Task
+	for _, task := range execution.GetCompletedTasks() {
+		if task.TaskDefName == utils.SendEmailTaskName {
+			emailTasks = append(emailTasks, task)
+		}
+	}
+	// No completed send_email task means no email was sent, so fail rather than report success.
+	if len(emailTasks) == 0 {
+		return nil, fmt.Errorf("no completed %s task outputs were found", utils.SendEmailTaskName)
+	}
+
+	// Check every output before inserting any, so a malformed one fails with a message naming its
+	// task instead of a database error or a panic.
+	rows := make([]emailRow, 0, len(emailTasks))
+	for _, task := range emailTasks {
+		// JSON numbers arrive as float64, so sent_time must be a whole float64.
+		sentTime, sentTimeOK := task.OutputData["sent_time"].(float64)
+		subject, subjectOK := task.OutputData["subject"].(string)
+		recipients, recipientsOK := task.OutputData["recipients"].(string)
+		var invalidFields []string
+		if !sentTimeOK || sentTime != math.Trunc(sentTime) {
+			invalidFields = append(invalidFields, "sent_time")
+		}
+		if !subjectOK {
+			invalidFields = append(invalidFields, "subject")
+		}
+		if !recipientsOK {
+			invalidFields = append(invalidFields, "recipients")
+		}
+		if len(invalidFields) > 0 {
+			return nil, fmt.Errorf("completed task %s has missing or invalid fields: %s",
+				task.ReferenceTaskName, strings.Join(invalidFields, ", "))
+		}
+		rows = append(rows, emailRow{int64(sentTime), subject, recipients})
+	}
+	return rows, nil
+}
+
+// storeEmailOutputs inserts every email row in one database transaction, and returns the number of
+// rows inserted.
+func storeEmailOutputs(rows []emailRow) (int, error) {
+	db, err := utils.OpenDatabase(true)
 	if err != nil {
 		return 0, err
 	}
@@ -146,24 +197,18 @@ func storeEmailOutputs(execution *model.Workflow) (int, error) {
 	}
 	defer tx.Rollback()
 
-	storedCount := 0
-	for _, task := range execution.GetCompletedTasks() {
-		if task.TaskDefName != "send_email" {
-			continue
-		}
-		email := task.OutputData
+	for _, row := range rows {
 		if _, err := tx.Exec(
 			"INSERT INTO emails (sent_time, subject, recipients) VALUES (?, ?, ?)",
-			int64(email["sent_time"].(float64)), email["subject"], email["recipients"],
+			row.sentTime, row.subject, row.recipients,
 		); err != nil {
 			return 0, err
 		}
-		storedCount++
 	}
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
-	return storedCount, nil
+	return len(rows), nil
 }
 
 // deployWaitForWebhookWorkflow runs the deploy-workflow step.
@@ -209,7 +254,11 @@ func deployWaitForWebhookWorkflow() error {
 	if err != nil {
 		return err
 	}
-	storedCount, err := storeEmailOutputs(execution)
+	rows, err := getCompletedEmailOutputs(execution)
+	if err != nil {
+		return err
+	}
+	storedCount, err := storeEmailOutputs(rows)
 	if err != nil {
 		return fmt.Errorf("store email records in %s: %w", utils.DatabasePath, err)
 	}

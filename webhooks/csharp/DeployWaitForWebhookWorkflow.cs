@@ -164,12 +164,16 @@ public static class DeployWaitForWebhookWorkflow
             .Where(task => task.TaskDefName == Workers.SendEmailTaskName
                 && task.Status == Conductor.Client.Models.Task.StatusEnum.COMPLETED)
             .ToList();
+        // No completed send_email task means no email was sent, so fail rather than
+        // report success.
         if (emailTasks.Count == 0)
         {
             throw new InvalidOperationException(
                 $"No completed {Workers.SendEmailTaskName} task outputs were found");
         }
 
+        // Check every output before inserting any, so a malformed one fails with a
+        // message naming its task instead of a database error.
         var emailOutputs = new List<Dictionary<string, object>>();
         foreach (var task in emailTasks)
         {

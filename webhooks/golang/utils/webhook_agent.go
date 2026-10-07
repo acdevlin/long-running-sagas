@@ -12,6 +12,7 @@ import (
 
 	"github.com/conductor-sdk/conductor-go/sdk/ai"
 	"github.com/conductor-sdk/conductor-go/sdk/ai/tool"
+	"github.com/conductor-sdk/conductor-go/sdk/model"
 	"webhookscodelab/settings"
 )
 
@@ -53,16 +54,18 @@ type recipientInput struct {
 
 // getRecipientEmailHistory runs the get_recipient_email_history tool.
 func getRecipientEmailHistory(_ context.Context, in recipientInput) (map[string]any, error) {
-	// FetchEmails returns every email for an empty recipient, so require one.
-	if in.Recipient == "" {
-		return nil, errors.New("a recipient email address is required")
+	// Trim so a padded address still matches. A blank one can never succeed (and FetchEmails would
+	// return every email for it), so fail at once instead of letting Conductor retry the task.
+	recipient := strings.TrimSpace(in.Recipient)
+	if recipient == "" {
+		return nil, model.NewNonRetryableError(errors.New("a recipient email address is required"))
 	}
-	emails, err := FetchEmails(in.Recipient)
+	emails, err := FetchEmails(recipient)
 	if err != nil {
 		return nil, err
 	}
 	return map[string]any{
-		"recipient":   in.Recipient,
+		"recipient":   recipient,
 		"email_count": len(emails),
 		"emails":      emails,
 	}, nil

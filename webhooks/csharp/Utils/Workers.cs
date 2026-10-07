@@ -42,9 +42,8 @@ public static class Workers
     public static Dictionary<string, object> GetUserEmails(
         [InputParam("user_ids")] List<string>? userIds, string subject, string body)
     {
-        // The SDK passes null when the workflow does not supply user_ids.
-        // Throwing an exception fails this task. Conductor then retries it as its
-        // task definition allows, and fails the workflow if every attempt fails.
+        // With no user IDs the fork would send no emails, but the workflow would still
+        // wait for its webhook, so fail instead. The SDK passes null if user_ids is missing.
         if (userIds is not { Count: > 0 })
         {
             throw new ArgumentException("At least one user ID is required", nameof(userIds));
@@ -59,6 +58,7 @@ public static class Workers
         for (var index = 0; index < userIds.Count; index++)
         {
             var userId = userIds[index];
+            // A blank ID would produce an invalid address such as "@example.com".
             if (string.IsNullOrWhiteSpace(userId))
             {
                 throw new ArgumentException($"Invalid user ID at index {index}", nameof(userIds));

@@ -70,8 +70,8 @@ public sealed class EmailActivityTools
         Description = "Return every stored email for one recipient. Pass the exact recipient email address from summarize_email_activity.")]
     public static async Task<RecipientEmailHistory> GetRecipientEmailHistoryAsync(string recipient)
     {
-        // A blank recipient can never succeed, so fail at once instead of letting
-        // Conductor retry the task, as it does for other exceptions.
+        // Trim so a padded address still matches. A missing or blank one can never succeed,
+        // so fail at once instead of letting Conductor retry the task.
         if (string.IsNullOrWhiteSpace(recipient))
         {
             throw new TerminalToolException("A recipient email address is required");

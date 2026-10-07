@@ -18,22 +18,40 @@ import java.util.Map;
  */
 public final class Workers {
 
+    /**
+     * Shared by the worker, the forked tasks and the deploy-workflow step's storing filter, which
+     * must all agree.
+     */
+    public static final String SEND_EMAIL_TASK_NAME = "send_email";
+
     /** Return one send_email task per user's email address, for the workflow's dynamic fork. */
     @WorkerTask("get_user_emails")
     public DynamicForkInput getUserEmails(
             @InputParam("user_ids") List<String> userIds,
             @InputParam("subject") String subject,
             @InputParam("body") String body) {
+        // With no user IDs the fork would send no emails, but the workflow would still wait for
+        // its webhook, so fail instead. The SDK passes null if user_ids is missing.
+        if (userIds == null || userIds.isEmpty()) {
+            throw new IllegalArgumentException("At least one user ID is required");
+        }
+
         List<Task<?>> tasks = new ArrayList<>();
         Map<String, Object> inputs = new LinkedHashMap<>();
         for (int index = 0; index < userIds.size(); index++) {
+            String userId = userIds.get(index);
+            // A blank ID would produce an invalid address such as "@example.com".
+            if (userId == null || userId.isBlank()) {
+                throw new IllegalArgumentException("Invalid user ID at index " + index);
+            }
+
             // The index keeps each reference name unique, even when a user ID repeats.
             String referenceName = "send_email_" + index;
-            tasks.add(new SimpleTask("send_email", referenceName));
+            tasks.add(new SimpleTask(SEND_EMAIL_TASK_NAME, referenceName));
             inputs.put(
                     referenceName,
                     Map.of(
-                            "recipients", userIds.get(index) + "@example.com",
+                            "recipients", userId + "@example.com",
                             "subject", subject,
                             "body", body));
         }
@@ -42,7 +60,7 @@ public final class Workers {
 
     // Threads above the default of 1 let this worker send the forked emails in parallel.
     /** Simulate sending an email. */
-    @WorkerTask(value = "send_email", threadCount = 10)
+    @WorkerTask(value = SEND_EMAIL_TASK_NAME, threadCount = 10)
     public Map<String, Object> sendEmail(
             @InputParam("recipients") String recipients,
             @InputParam("subject") String subject,

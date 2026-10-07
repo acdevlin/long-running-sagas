@@ -25,9 +25,10 @@ pub struct EmailActivity {
     pub email_count: i64,
 }
 
-/// Open a read-only connection to the codelab database. Checking the path first gives a clear
-/// error when the database has not been created yet.
-fn open_read_only_database() -> Result<Connection> {
+/// Open a connection to the codelab database, read-only unless `writable` is true. Opening a
+/// missing file would create an empty database, so check the path first and open without creating
+/// it.
+pub fn open_database(writable: bool) -> Result<Connection> {
     if !Path::new(DATABASE_PATH).is_file() {
         bail!(
             "database not found at {DATABASE_PATH}; run the create-db step \
@@ -36,11 +37,13 @@ fn open_read_only_database() -> Result<Connection> {
     }
 
     // Read-only mode prevents this query helper and the agent tools that use it from modifying the
-    // codelab database.
-    Ok(Connection::open_with_flags(
-        DATABASE_PATH,
-        OpenFlags::SQLITE_OPEN_READ_ONLY,
-    )?)
+    // codelab database. Neither mode creates the file.
+    let flags = if writable {
+        OpenFlags::SQLITE_OPEN_READ_WRITE
+    } else {
+        OpenFlags::SQLITE_OPEN_READ_ONLY
+    };
+    Ok(Connection::open_with_flags(DATABASE_PATH, flags)?)
 }
 
 /// Return the stored emails in insertion order, or only those sent to `recipient` if it is given.
@@ -56,7 +59,7 @@ pub fn fetch_emails(recipient: Option<&str>) -> Result<Vec<Email>> {
     }
     query += "ORDER BY id";
 
-    let connection = open_read_only_database()?;
+    let connection = open_database(false)?;
     let mut statement = connection.prepare(&query)?;
     // The recipient, if any, is the query's only parameter.
     let emails = statement.query_map(params_from_iter(recipient), |row: &Row| {
@@ -81,7 +84,7 @@ pub fn fetch_email_activity() -> Result<Vec<EmailActivity>> {
         ORDER BY email_count DESC, recipient
         ";
 
-    let connection = open_read_only_database()?;
+    let connection = open_database(false)?;
     let mut statement = connection.prepare(query)?;
     let activity = statement.query_map([], |row: &Row| {
         Ok(EmailActivity {

@@ -30,6 +30,8 @@ export class Workers {
       subject,
       body,
     } = task.inputData as { user_ids: string[]; subject: string; body: string };
+    // With no user IDs the fork would send no emails, but the workflow would still wait for its
+    // webhook, so fail instead.
     if (!Array.isArray(userIds) || userIds.length === 0) {
       throw new Error("At least one user ID is required");
     }
@@ -37,6 +39,7 @@ export class Workers {
     const dynamicTasks: WorkflowTask[] = [];
     const dynamicTasksInputs: Record<string, unknown> = {};
     for (const [index, userId] of userIds.entries()) {
+      // A blank ID would produce an invalid address such as "@example.com".
       if (typeof userId !== "string" || userId.trim() === "") {
         throw new Error(`Invalid user ID at index ${index}`);
       }

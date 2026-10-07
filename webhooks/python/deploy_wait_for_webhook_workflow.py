@@ -65,6 +65,8 @@ def build_workflow(workflow_executor) -> ConductorWorkflow:
     # for example because no webhook arrives. ALERT_ONLY would let it keep running.
     workflow.timeout_seconds(WORKFLOW_TIMEOUT_SECONDS)
     workflow.timeout_policy(TimeoutPolicy.TIME_OUT_WORKFLOW)
+    # Lists the input that every execution needs. Conductor shows it in the workflow
+    # definition but does not require it when a workflow starts.
     workflow.input_parameters(["user_ids"])
 
     # Resolve every recipient's address in a single worker task, which also
@@ -177,11 +179,15 @@ def get_completed_email_outputs(
         for task in execution.tasks or []
         if task.task_def_name == SEND_EMAIL_TASK_NAME and task.status == "COMPLETED"
     ]
+    # No completed send_email task means no email was sent, so fail rather than
+    # report success.
     if not email_tasks:
         raise RuntimeError(
             f"No completed {SEND_EMAIL_TASK_NAME} task outputs were found"
         )
 
+    # Check every output before inserting any, so a malformed one fails with a
+    # message naming its task instead of a database error.
     email_outputs = []
     for task in email_tasks:
         output = task.output_data
